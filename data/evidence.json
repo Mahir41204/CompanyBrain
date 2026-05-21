@@ -1,0 +1,26 @@
+[
+  {
+    "id": "evidence_seed_refund_policy",
+    "source_type": "wiki",
+    "source_ref": "support/refund-policy",
+    "text": "Enterprise refunds inside the 90-day grace period can be approved in Zendesk. Finance owns refund policy and reviews retention exceptions.",
+    "timestamp": "2026-05-21",
+    "confidence": 0.9
+  },
+  {
+    "id": "evidence_seed_supplier_policy",
+    "source_type": "supplieros",
+    "source_ref": "supplieros_decisions_847",
+    "text": "Supplier approval uses SupplierOS. Procurement owns supplier approval policy, and high-risk suppliers require compliance review.",
+    "timestamp": "2026-05-21",
+    "confidence": 0.88
+  },
+  {
+    "id": "evidence_seed_pricing_policy",
+    "source_type": "salesforce",
+    "source_ref": "sales/pricing-exceptions",
+    "text": "Enterprise pricing exceptions above twenty percent discount require VP Sales approval and should be logged in Salesforce.",
+    "timestamp": "2026-05-21",
+    "confidence": 0.86
+  }
+]

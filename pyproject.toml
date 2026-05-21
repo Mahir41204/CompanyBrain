@@ -1,0 +1,11 @@
+[project]
+name = "company-brain"
+version = "0.1.0"
+description = "Executable company knowledge MVP for AI agents."
+requires-python = ">=3.11"
+
+[project.scripts]
+company-brain = "company_brain.main:main"
+
+[tool.unittest]
+start-directory = "tests"

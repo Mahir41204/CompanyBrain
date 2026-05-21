@@ -1,0 +1,74 @@
+{
+  "skill_id": "supplier_approval_decision",
+  "version": "1.0.0",
+  "domain": "procurement",
+  "last_updated": "2026-05-21",
+  "confidence_score": 0.89,
+  "description": "Determine whether a supplier passes qualification for a new sourcing workflow.",
+  "inputs": [
+    {"name": "iso_9001_certified", "required": true},
+    {"name": "audit_passed_last_12mo", "required": true},
+    {"name": "previous_delivery_delays", "required": true},
+    {"name": "country_risk", "required": true},
+    {"name": "prior_relationship", "required": false}
+  ],
+  "decision_tree": [
+    {
+      "if": {
+        "all": [
+          {"field": "iso_9001_certified", "operator": "==", "value": true},
+          {"field": "audit_passed_last_12mo", "operator": "==", "value": true},
+          {"field": "previous_delivery_delays", "operator": "<=", "value": 2},
+          {"field": "country_risk", "operator": "not_in", "value": ["high", "sanctioned"]}
+        ]
+      },
+      "then": {
+        "action": "auto_approve_supplier",
+        "requires_approval": false,
+        "log_in": "supplieros"
+      },
+      "reasoning": "Supplier has current certification, recent audit pass, acceptable delivery history, and low country risk."
+    },
+    {
+      "if": {
+        "all": [
+          {"field": "previous_delivery_delays", "operator": ">", "value": 2}
+        ]
+      },
+      "then": {
+        "action": "requires_vp_approval",
+        "requires_approval": true,
+        "escalate_to": "vp_procurement@company.com",
+        "log_in": "supplieros"
+      },
+      "reasoning": "Supplier has more than two delivery delays in the recent lookback window."
+    },
+    {
+      "if": {
+        "all": [
+          {"field": "country_risk", "operator": "in", "value": ["high", "sanctioned"]},
+          {"field": "prior_relationship", "operator": "!=", "value": true}
+        ]
+      },
+      "then": {
+        "action": "requires_enhanced_due_diligence",
+        "requires_approval": true,
+        "escalate_to": "compliance_team@company.com",
+        "log_in": "supplieros"
+      },
+      "reasoning": "High-risk country supplier without an existing relationship requires compliance review."
+    },
+    {
+      "else": {
+        "action": "needs_procurement_review",
+        "requires_approval": true,
+        "escalate_to": "procurement-lead@company.com"
+      },
+      "reasoning": "Supplier does not match an automatic approval or known escalation path."
+    }
+  ],
+  "learned_from": [
+    {"source": "supplieros_decisions_847", "date": "2025-11-12", "outcome": "92_percent_auto_approved_met_slas"}
+  ],
+  "related_skills": ["country_risk_assessment", "supplier_audit_review"]
+}

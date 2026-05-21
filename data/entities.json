@@ -1,0 +1,188 @@
+[
+  {
+    "id": "customer_enterprise_customer",
+    "type": "customer",
+    "name": "enterprise customer",
+    "attributes": {
+      "tier": "enterprise"
+    },
+    "confidence": 0.87,
+    "sources": [
+      "evidence_seed_refund_policy",
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "policy_pricing_exception_policy",
+    "type": "policy",
+    "name": "pricing exception policy",
+    "attributes": {
+      "vp_approval_discount_threshold": 20
+    },
+    "confidence": 0.86,
+    "sources": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "policy_refund_policy",
+    "type": "policy",
+    "name": "refund policy",
+    "attributes": {
+      "known_exception": "enterprise customer",
+      "grace_period_days": 90
+    },
+    "confidence": 0.9,
+    "sources": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "policy_supplier_approval_policy",
+    "type": "policy",
+    "name": "supplier approval policy",
+    "attributes": {
+      "high_risk_requires": "compliance review"
+    },
+    "confidence": 0.88,
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "process_pricing_exception_process",
+    "type": "process",
+    "name": "pricing exception process",
+    "attributes": {},
+    "confidence": 0.84,
+    "sources": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "process_refund_process",
+    "type": "process",
+    "name": "refund process",
+    "attributes": {},
+    "confidence": 0.88,
+    "sources": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "process_supplier_approval_process",
+    "type": "process",
+    "name": "supplier approval process",
+    "attributes": {},
+    "confidence": 0.86,
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "skill_enterprise_pricing_exception",
+    "type": "skill",
+    "name": "enterprise_pricing_exception",
+    "attributes": {
+      "skill_id": "enterprise_pricing_exception"
+    },
+    "confidence": 0.88,
+    "sources": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "skill_refund_decision",
+    "type": "skill",
+    "name": "refund_decision",
+    "attributes": {
+      "skill_id": "refund_decision"
+    },
+    "confidence": 0.84,
+    "sources": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "skill_supplier_approval_decision",
+    "type": "skill",
+    "name": "supplier_approval_decision",
+    "attributes": {
+      "skill_id": "supplier_approval_decision"
+    },
+    "confidence": 0.89,
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "team_compliance_team",
+    "type": "team",
+    "name": "Compliance Team",
+    "attributes": {},
+    "confidence": 0.82,
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "team_finance_team",
+    "type": "team",
+    "name": "Finance Team",
+    "attributes": {},
+    "confidence": 0.88,
+    "sources": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "team_procurement_team",
+    "type": "team",
+    "name": "Procurement Team",
+    "attributes": {},
+    "confidence": 0.86,
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "team_sales_team",
+    "type": "team",
+    "name": "Sales Team",
+    "attributes": {},
+    "confidence": 0.84,
+    "sources": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "tool_salesforce",
+    "type": "tool",
+    "name": "Salesforce",
+    "attributes": {},
+    "confidence": 0.86,
+    "sources": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "tool_supplieros",
+    "type": "tool",
+    "name": "SupplierOS",
+    "attributes": {},
+    "confidence": 0.88,
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "tool_zendesk",
+    "type": "tool",
+    "name": "Zendesk",
+    "attributes": {},
+    "confidence": 0.9,
+    "sources": [
+      "evidence_seed_refund_policy"
+    ]
+  }
+]

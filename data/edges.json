@@ -1,0 +1,162 @@
+[
+  {
+    "id": "process_pricing_exception_process::governed_by::policy_pricing_exception_policy",
+    "source_id": "process_pricing_exception_process",
+    "target_id": "policy_pricing_exception_policy",
+    "relation": "governed_by",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "process_pricing_exception_process::requires_approval::team_sales_team",
+    "source_id": "process_pricing_exception_process",
+    "target_id": "team_sales_team",
+    "relation": "requires_approval",
+    "confidence": 0.8,
+    "evidence": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "process_pricing_exception_process::uses::tool_salesforce",
+    "source_id": "process_pricing_exception_process",
+    "target_id": "tool_salesforce",
+    "relation": "uses",
+    "confidence": 0.86,
+    "evidence": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "process_refund_process::governed_by::policy_refund_policy",
+    "source_id": "process_refund_process",
+    "target_id": "policy_refund_policy",
+    "relation": "governed_by",
+    "confidence": 0.86,
+    "evidence": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "process_refund_process::requires_approval::team_finance_team",
+    "source_id": "process_refund_process",
+    "target_id": "team_finance_team",
+    "relation": "requires_approval",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "process_refund_process::uses::tool_zendesk",
+    "source_id": "process_refund_process",
+    "target_id": "tool_zendesk",
+    "relation": "uses",
+    "confidence": 0.88,
+    "evidence": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "process_supplier_approval_process::governed_by::policy_supplier_approval_policy",
+    "source_id": "process_supplier_approval_process",
+    "target_id": "policy_supplier_approval_policy",
+    "relation": "governed_by",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "process_supplier_approval_process::requires_approval::team_compliance_team",
+    "source_id": "process_supplier_approval_process",
+    "target_id": "team_compliance_team",
+    "relation": "requires_approval",
+    "confidence": 0.82,
+    "evidence": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "process_supplier_approval_process::uses::tool_supplieros",
+    "source_id": "process_supplier_approval_process",
+    "target_id": "tool_supplieros",
+    "relation": "uses",
+    "confidence": 0.88,
+    "evidence": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "skill_enterprise_pricing_exception::implements::policy_pricing_exception_policy",
+    "source_id": "skill_enterprise_pricing_exception",
+    "target_id": "policy_pricing_exception_policy",
+    "relation": "implements",
+    "confidence": 0.88,
+    "evidence": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "skill_refund_decision::implements::policy_refund_policy",
+    "source_id": "skill_refund_decision",
+    "target_id": "policy_refund_policy",
+    "relation": "implements",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "skill_supplier_approval_decision::implements::policy_supplier_approval_policy",
+    "source_id": "skill_supplier_approval_decision",
+    "target_id": "policy_supplier_approval_policy",
+    "relation": "implements",
+    "confidence": 0.89,
+    "evidence": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "team_finance_team::owns::policy_refund_policy",
+    "source_id": "team_finance_team",
+    "target_id": "policy_refund_policy",
+    "relation": "owns",
+    "confidence": 0.86,
+    "evidence": [
+      "evidence_seed_refund_policy"
+    ]
+  },
+  {
+    "id": "team_procurement_team::owns::policy_supplier_approval_policy",
+    "source_id": "team_procurement_team",
+    "target_id": "policy_supplier_approval_policy",
+    "relation": "owns",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_supplier_policy"
+    ]
+  },
+  {
+    "id": "team_sales_team::owns::policy_pricing_exception_policy",
+    "source_id": "team_sales_team",
+    "target_id": "policy_pricing_exception_policy",
+    "relation": "owns",
+    "confidence": 0.82,
+    "evidence": [
+      "evidence_seed_pricing_policy"
+    ]
+  },
+  {
+    "id": "policy_refund_policy::has_exception::customer_enterprise_customer",
+    "source_id": "policy_refund_policy",
+    "target_id": "customer_enterprise_customer",
+    "relation": "has_exception",
+    "confidence": 0.86,
+    "evidence": [
+      "evidence_seed_refund_policy"
+    ]
+  }
+]

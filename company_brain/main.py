@@ -1,0 +1,276 @@
+from __future__ import annotations
+
+import argparse
+import json
+import mimetypes
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
+
+from .coverage import CoverageService
+from .core.graph import BrainGraph
+from .decision_engine import DecisionEngine
+from .execution.planner import ExecutionPlanner
+from .ingestion import IngestionService
+from .learning import LearningService
+from .memory.event_store import Event, EventStore
+from .memory.process_mining import ProcessMiner
+from .models import skill_summary
+from .repository import SkillRepository
+from .storage import EdgeRepository, EntityRepository, EvidenceRepository
+
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
+    repository = SkillRepository(data_dir)
+    decision_engine = DecisionEngine()
+    learning_service = LearningService(repository)
+    ingestion_service = IngestionService(repository)
+    coverage_service = CoverageService(repository)
+    entity_repository = EntityRepository(data_dir)
+    edge_repository = EdgeRepository(data_dir)
+    evidence_repository = EvidenceRepository(data_dir)
+    event_store = EventStore(data_dir)
+    process_miner = ProcessMiner()
+
+    def load_graph() -> BrainGraph:
+        return BrainGraph(
+            entities=entity_repository.list_entities(),
+            edges=edge_repository.list_edges(),
+            evidence=evidence_repository.list_evidence(),
+        )
+
+    class CompanyBrainHandler(BaseHTTPRequestHandler):
+        server_version = "CompanyBrain/0.1"
+
+        def do_OPTIONS(self) -> None:
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self._send_common_headers("application/json", 0)
+            self.end_headers()
+
+        def do_GET(self) -> None:
+            try:
+                parsed = urlparse(self.path)
+                path = unquote(parsed.path)
+                parts = self._parts(path)
+                query = parse_qs(parsed.query)
+
+                if path == "/":
+                    self._send_file(STATIC_DIR / "index.html")
+                    return
+                if parts and parts[0] == "static":
+                    self._send_static(parts[1:])
+                    return
+                if parts == ["health"]:
+                    self._send_json({"status": "ok"})
+                    return
+                if parts == ["brain", "skills"]:
+                    skills = [skill_summary(skill) for skill in repository.list_skills()]
+                    self._send_json({"skills": skills})
+                    return
+                if len(parts) == 3 and parts[:2] == ["brain", "skills"]:
+                    self._send_json(repository.get_skill(parts[2]))
+                    return
+                if parts == ["brain", "candidates"]:
+                    self._send_json({"candidates": repository.list_candidates()})
+                    return
+                if parts == ["brain", "coverage"]:
+                    self._send_json(coverage_service.compute())
+                    return
+                if parts == ["brain", "graph"]:
+                    self._send_json(load_graph().to_dict())
+                    return
+                if parts == ["brain", "graph", "entities"]:
+                    self._send_json({"entities": [entity.to_dict() for entity in entity_repository.list_entities()]})
+                    return
+                if parts == ["brain", "graph", "edges"]:
+                    self._send_json({"edges": [edge.to_dict() for edge in edge_repository.list_edges()]})
+                    return
+                if parts == ["brain", "graph", "evidence"]:
+                    self._send_json(
+                        {"evidence": [evidence.to_dict() for evidence in evidence_repository.list_evidence()]}
+                    )
+                    return
+                if parts == ["brain", "graph", "explain"]:
+                    search_query = self._query_value(query, "q") or self._query_value(query, "query")
+                    if not search_query:
+                        raise ValueError("Query parameter q is required")
+                    self._send_json(load_graph().explain(search_query))
+                    return
+                if len(parts) == 4 and parts[:3] == ["brain", "graph", "neighbors"]:
+                    self._send_json({"neighbors": load_graph().neighbors(parts[3])})
+                    return
+                if parts == ["brain", "graph", "path"]:
+                    source_id = self._query_value(query, "from") or self._query_value(query, "source")
+                    target_id = self._query_value(query, "to") or self._query_value(query, "target")
+                    if not source_id or not target_id:
+                        raise ValueError("Query parameters from and to are required")
+                    path_result = load_graph().path(source_id, target_id)
+                    self._send_json({"path": path_result})
+                    return
+                if parts == ["brain", "processes", "flows"]:
+                    self._send_json(process_miner.discover_flow(event_store.list_events()))
+                    return
+
+                self._send_error(HTTPStatus.NOT_FOUND, "Not found")
+            except KeyError as exc:
+                self._send_error(HTTPStatus.NOT_FOUND, str(exc))
+            except ValueError as exc:
+                self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+            except Exception as exc:
+                self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+
+        def do_POST(self) -> None:
+            try:
+                parsed = urlparse(self.path)
+                parts = self._parts(unquote(parsed.path))
+                payload = self._read_json()
+
+                if len(parts) == 3 and parts[:2] == ["brain", "execute"]:
+                    skill_id = parts[2]
+                    context = payload.get("context", payload)
+                    if not isinstance(context, dict):
+                        raise ValueError("Execution context must be a JSON object")
+                    skill = repository.get_skill(skill_id)
+                    decision = decision_engine.execute(skill, context)
+                    execution = learning_service.record_execution(skill_id, context, decision)
+                    decision["execution_id"] = execution["execution_id"]
+                    self._send_json(decision)
+                    return
+
+                if parts == ["brain", "learn"]:
+                    self._send_json(learning_service.submit_outcome(payload))
+                    return
+
+                if parts == ["brain", "ingest"]:
+                    self._send_json(ingestion_service.ingest(payload), status=HTTPStatus.CREATED)
+                    return
+
+                if parts == ["brain", "events"]:
+                    event_payloads = payload.get("events")
+                    if event_payloads is None:
+                        event_payloads = [payload]
+                    if not isinstance(event_payloads, list):
+                        raise ValueError("events must be a list")
+                    events = [Event.from_dict(item) for item in event_payloads]
+                    event_store.append_many(events)
+                    self._send_json({"events": [event.to_dict() for event in events]}, status=HTTPStatus.CREATED)
+                    return
+
+                if parts == ["brain", "plan"]:
+                    query = str(payload.get("query", "")).strip()
+                    if not query:
+                        raise ValueError("query is required")
+                    self._send_json(ExecutionPlanner(load_graph()).build_plan(query))
+                    return
+
+                if len(parts) == 4 and parts[:2] == ["brain", "candidates"] and parts[3] == "approve":
+                    self._send_json({"skill": repository.approve_candidate(parts[2])})
+                    return
+
+                if len(parts) == 4 and parts[:2] == ["brain", "candidates"] and parts[3] == "reject":
+                    note = payload.get("note") if isinstance(payload, dict) else None
+                    self._send_json({"candidate": repository.update_candidate_status(parts[2], "rejected", note)})
+                    return
+
+                self._send_error(HTTPStatus.NOT_FOUND, "Not found")
+            except KeyError as exc:
+                self._send_error(HTTPStatus.NOT_FOUND, str(exc))
+            except json.JSONDecodeError:
+                self._send_error(HTTPStatus.BAD_REQUEST, "Request body must be valid JSON")
+            except ValueError as exc:
+                self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+            except Exception as exc:
+                self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+
+        def _read_json(self) -> dict[str, Any]:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length == 0:
+                return {}
+            body = self.rfile.read(length).decode("utf-8")
+            data = json.loads(body)
+            if not isinstance(data, dict):
+                raise ValueError("Request body must be a JSON object")
+            return data
+
+        def _send_json(self, payload: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
+            data = json.dumps(payload, indent=2).encode("utf-8")
+            self.send_response(status)
+            self._send_common_headers("application/json; charset=utf-8", len(data))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _send_error(self, status: HTTPStatus, message: str) -> None:
+            self._send_json({"error": message}, status=status)
+
+        def _send_common_headers(self, content_type: str, content_length: int) -> None:
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(content_length))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+
+        def _send_static(self, parts: list[str]) -> None:
+            if not parts:
+                self._send_error(HTTPStatus.NOT_FOUND, "Not found")
+                return
+            candidate = (STATIC_DIR / Path(*parts)).resolve()
+            if STATIC_DIR not in candidate.parents and candidate != STATIC_DIR:
+                self._send_error(HTTPStatus.FORBIDDEN, "Forbidden")
+                return
+            self._send_file(candidate)
+
+        def _send_file(self, path: Path) -> None:
+            if not path.exists() or not path.is_file():
+                self._send_error(HTTPStatus.NOT_FOUND, "Not found")
+                return
+            data = path.read_bytes()
+            content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            self.send_response(HTTPStatus.OK)
+            self._send_common_headers(content_type, len(data))
+            self.end_headers()
+            self.wfile.write(data)
+
+        @staticmethod
+        def _parts(path: str) -> list[str]:
+            return [part for part in path.strip("/").split("/") if part]
+
+        @staticmethod
+        def _query_value(query: dict[str, list[str]], key: str) -> str | None:
+            values = query.get(key)
+            if not values:
+                return None
+            return values[0]
+
+        def log_message(self, format: str, *args: Any) -> None:
+            print(f"{self.address_string()} - {format % args}")
+
+    return CompanyBrainHandler
+
+
+def run(host: str, port: int, data_dir: str | Path) -> None:
+    server = ThreadingHTTPServer((host, port), make_handler(data_dir))
+    print(f"Company Brain running at http://{host}:{port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run the Company Brain MVP server.")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", default=8000, type=int)
+    parser.add_argument("--data-dir", default="data")
+    args = parser.parse_args()
+    run(args.host, args.port, args.data_dir)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Company Brain</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Company Brain</p>
+        <h1>Executable Operations</h1>
+      </div>
+      <div class="status" id="apiStatus">Connecting</div>
+    </header>
+
+    <main class="shell">
+      <nav class="rail" aria-label="Views">
+        <button class="nav-button active" data-view="skillsView">Skills</button>
+        <button class="nav-button" data-view="reviewView">Review</button>
+        <button class="nav-button" data-view="ingestView">Ingest</button>
+        <button class="nav-button" data-view="memoryView">Memory</button>
+        <button class="nav-button" data-view="coverageView">Coverage</button>
+      </nav>
+
+      <section class="view active" id="skillsView">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Skill Registry</p>
+            <h2>Agent-ready rules</h2>
+          </div>
+          <button id="refreshSkills">Refresh</button>
+        </div>
+        <div class="two-pane">
+          <div class="list" id="skillList"></div>
+          <div class="detail">
+            <div class="detail-head">
+              <div>
+                <p class="eyebrow" id="selectedDomain">Domain</p>
+                <h3 id="selectedTitle">Select a skill</h3>
+              </div>
+              <span class="pill" id="selectedConfidence">0.00</span>
+            </div>
+            <pre id="skillDefinition">{}</pre>
+            <div class="execute-panel">
+              <div class="section-head compact">
+                <h3>Execute</h3>
+                <button id="runSkill">Run</button>
+              </div>
+              <textarea id="executionContext" spellcheck="false">{
+  "customer_tier": "enterprise",
+  "days_since_purchase": 75,
+  "previous_refund_requests": 0,
+  "churn_risk": false
+}</textarea>
+              <pre id="executionResult">{}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="reviewView">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Human Review</p>
+            <h2>Candidate skills</h2>
+          </div>
+          <button id="refreshCandidates">Refresh</button>
+        </div>
+        <div class="list wide" id="candidateList"></div>
+      </section>
+
+      <section class="view" id="ingestView">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Knowledge Ingestion</p>
+            <h2>Extract from source text</h2>
+          </div>
+          <button id="submitIngest">Extract</button>
+        </div>
+        <div class="form-grid">
+          <label>
+            Source
+            <input id="ingestSource" value="slack_thread_12847">
+          </label>
+          <label>
+            Owner
+            <input id="ingestOwner" value="operations_reviewer">
+          </label>
+        </div>
+        <textarea id="ingestContent" spellcheck="true">Customer wants a refund after 60 days. Approve it if they are enterprise and this is their first refund request, otherwise escalate to Sarah.</textarea>
+        <pre id="ingestResult">{}</pre>
+      </section>
+
+      <section class="view" id="coverageView">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Coverage</p>
+            <h2>Operational map</h2>
+          </div>
+          <button id="refreshCoverage">Refresh</button>
+        </div>
+        <div class="metrics" id="coverageMetrics"></div>
+        <div class="list wide" id="coverageGaps"></div>
+      </section>
+
+      <section class="view" id="memoryView">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Memory Graph</p>
+            <h2>Entities, relationships, evidence</h2>
+          </div>
+          <button id="refreshMemory">Refresh</button>
+        </div>
+        <div class="form-grid">
+          <label>
+            Query
+            <input id="memoryQuery" value="enterprise refund">
+          </label>
+          <label>
+            Explain
+            <button id="explainMemory">Run Explain</button>
+          </label>
+        </div>
+        <div class="metrics" id="memoryMetrics"></div>
+        <pre id="memoryResult">{}</pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

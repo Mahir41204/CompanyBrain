@@ -1,0 +1,72 @@
+{
+  "skill_id": "enterprise_pricing_exception",
+  "version": "1.0.0",
+  "domain": "sales",
+  "last_updated": "2026-05-21",
+  "confidence_score": 0.88,
+  "description": "Determine whether an enterprise pricing exception can be handled by the sales rep or needs VP approval.",
+  "inputs": [
+    {"name": "deal_size", "required": true},
+    {"name": "discount_percent", "required": true},
+    {"name": "customer_tier", "required": true}
+  ],
+  "decision_tree": [
+    {
+      "if": {
+        "all": [
+          {"field": "deal_size", "operator": "<", "value": 50000}
+        ]
+      },
+      "then": {
+        "action": "sales_rep_can_approve",
+        "requires_approval": false,
+        "requires_documentation": true,
+        "log_in": "salesforce"
+      },
+      "reasoning": "Deal is below the VP approval threshold."
+    },
+    {
+      "if": {
+        "all": [
+          {"field": "deal_size", "operator": ">=", "value": 50000},
+          {"field": "discount_percent", "operator": ">", "value": 20}
+        ]
+      },
+      "then": {
+        "action": "requires_vp_approval",
+        "requires_approval": true,
+        "escalate_to": "vp-sales@company.com",
+        "log_in": "salesforce"
+      },
+      "reasoning": "Large deal with discount above standard enterprise approval policy."
+    },
+    {
+      "if": {
+        "all": [
+          {"field": "deal_size", "operator": ">=", "value": 50000},
+          {"field": "discount_percent", "operator": "<=", "value": 20}
+        ]
+      },
+      "then": {
+        "action": "sales_rep_can_approve",
+        "requires_approval": false,
+        "requires_documentation": true,
+        "log_in": "salesforce"
+      },
+      "reasoning": "Large deal discount is within rep approval range when documented."
+    },
+    {
+      "else": {
+        "action": "needs_sales_operations_review",
+        "requires_approval": true,
+        "escalate_to": "sales-ops@company.com"
+      },
+      "reasoning": "Input did not fit a known pricing exception path."
+    }
+  ],
+  "learned_from": [
+    {"source": "slack_thread_sales_12847", "date": "2024-03-15", "outcome": "deal_closed"},
+    {"source": "salesforce_opportunity_987234", "date": "2024-04-20", "outcome": "deal_lost"}
+  ],
+  "related_skills": ["enterprise_contract_negotiation", "discount_approval_workflow"]
+}
