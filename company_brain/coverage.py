@@ -4,7 +4,14 @@ from collections import Counter
 from typing import Any
 
 from .repository import SkillRepository
-from .storage import EdgeRepository, EntityRepository, EvidenceRepository
+from .reasoning import ConflictDetector
+from .storage import (
+    DiscoveryRepository,
+    EdgeRepository,
+    EntityRepository,
+    EvidenceRepository,
+    SnapshotRepository,
+)
 
 
 class CoverageService:
@@ -13,6 +20,8 @@ class CoverageService:
         self.entities = EntityRepository(repository.data_dir)
         self.edges = EdgeRepository(repository.data_dir)
         self.evidence = EvidenceRepository(repository.data_dir)
+        self.discoveries = DiscoveryRepository(repository.data_dir)
+        self.snapshots = SnapshotRepository(repository.data_dir)
 
     def compute(self) -> dict[str, Any]:
         skills = self.repository.list_skills()
@@ -38,6 +47,9 @@ class CoverageService:
             "memory_entities": len(self.entities.list_entities()),
             "memory_edges": len(self.edges.list_edges()),
             "evidence_items": len(self.evidence.list_evidence()),
+            "discoveries": len(self.discoveries.list_discoveries()),
+            "memory_snapshots": len(self.snapshots.list_snapshots()),
+            "open_conflicts": len(ConflictDetector().detect(self.snapshots.list_snapshots())),
             "skills_by_domain": dict(domains),
             "pending_candidates_by_domain": dict(candidate_domains),
             "operations_covered_estimate": round(len(high_confidence) / denominator, 4),

@@ -6,34 +6,72 @@
   "confidence_score": 0.84,
   "description": "Decide whether a customer refund request can be auto-approved or should be escalated.",
   "inputs": [
-    {"name": "customer_tier", "required": true},
-    {"name": "days_since_purchase", "required": true},
-    {"name": "previous_refund_requests", "required": true},
-    {"name": "churn_risk", "required": false}
+    {
+      "name": "customer_tier",
+      "required": true
+    },
+    {
+      "name": "days_since_purchase",
+      "required": true
+    },
+    {
+      "name": "previous_refund_requests",
+      "required": true
+    },
+    {
+      "name": "churn_risk",
+      "required": false
+    }
   ],
   "decision_tree": [
     {
       "if": {
         "all": [
-          {"field": "customer_tier", "operator": "==", "value": "enterprise"},
-          {"field": "days_since_purchase", "operator": "<=", "value": 90},
-          {"field": "previous_refund_requests", "operator": "==", "value": 0}
+          {
+            "field": "customer_tier",
+            "operator": "==",
+            "value": "enterprise"
+          },
+          {
+            "field": "days_since_purchase",
+            "operator": "<=",
+            "value": 90
+          },
+          {
+            "field": "previous_refund_requests",
+            "operator": "==",
+            "value": 0
+          }
         ]
       },
       "then": {
         "action": "approve_refund",
         "requires_approval": false,
         "log_in": "zendesk",
-        "notify": ["finance@company.com"]
+        "notify": [
+          "finance@company.com"
+        ]
       },
       "reasoning": "Enterprise customer, first refund request, inside the 90-day grace period."
     },
     {
       "if": {
         "all": [
-          {"field": "customer_tier", "operator": "==", "value": "enterprise"},
-          {"field": "churn_risk", "operator": "==", "value": true},
-          {"field": "days_since_purchase", "operator": "<=", "value": 120}
+          {
+            "field": "customer_tier",
+            "operator": "==",
+            "value": "enterprise"
+          },
+          {
+            "field": "churn_risk",
+            "operator": "==",
+            "value": true
+          },
+          {
+            "field": "days_since_purchase",
+            "operator": "<=",
+            "value": 120
+          }
         ]
       },
       "then": {
@@ -56,8 +94,19 @@
     }
   ],
   "learned_from": [
-    {"source": "slack_thread_support_12847", "date": "2024-03-15", "outcome": "customer_retained"},
-    {"source": "zendesk_ticket_55201", "date": "2024-04-20", "outcome": "refund_approved"}
+    {
+      "source": "slack_thread_support_12847",
+      "date": "2024-03-15",
+      "outcome": "customer_retained"
+    },
+    {
+      "source": "zendesk_ticket_55201",
+      "date": "2024-04-20",
+      "outcome": "refund_approved"
+    }
   ],
-  "related_skills": ["customer_tier_lookup", "finance_refund_notification"]
+  "related_skills": [
+    "customer_tier_lookup",
+    "finance_refund_notification"
+  ]
 }

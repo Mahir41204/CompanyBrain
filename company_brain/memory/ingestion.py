@@ -7,6 +7,7 @@ from typing import Any
 from company_brain.core.edges import Edge
 from company_brain.core.entities import Entity, EntityType, entity_id
 from company_brain.core.evidence import Evidence
+from company_brain.discovery import Discovery, DiscoveryEngine
 from company_brain.extractors import (
     DecisionExtractor,
     ExtractionResult,
@@ -16,7 +17,13 @@ from company_brain.extractors import (
     ToolExtractor,
 )
 from company_brain.models import utc_now
-from company_brain.storage import EdgeRepository, EntityRepository, EvidenceRepository
+from company_brain.storage import (
+    DiscoveryRepository,
+    EdgeRepository,
+    EntityRepository,
+    EvidenceRepository,
+    SnapshotRepository,
+)
 
 
 class MemoryIngestionService:
@@ -24,6 +31,9 @@ class MemoryIngestionService:
         self.entities = EntityRepository(data_dir)
         self.edges = EdgeRepository(data_dir)
         self.evidence = EvidenceRepository(data_dir)
+        self.discoveries = DiscoveryRepository(data_dir)
+        self.snapshots = SnapshotRepository(data_dir)
+        self.discovery_engine = DiscoveryEngine()
         self.extractors = [
             ProcessExtractor(),
             PolicyExtractor(),
@@ -45,12 +55,20 @@ class MemoryIngestionService:
             extraction.extend(extractor.extract(text, evidence.id))
 
         extraction.edges.extend(self._derive_edges(text, extraction.entities, evidence.id, skill_id))
+        discovery = self.discovery_engine.discover(record, evidence.id)
+        self.discoveries.upsert(discovery)
+        discovery_entities, discovery_edges = self._memory_from_discovery(discovery, skill_id)
+        extraction.entities.extend(discovery_entities)
+        extraction.edges.extend(discovery_edges)
 
         self.entities.upsert_many(extraction.entities)
         self.edges.upsert_many(extraction.edges)
+        for entity in extraction.entities:
+            self.snapshots.record_entity(entity, evidence.timestamp)
 
         return {
             "evidence": evidence.to_dict(),
+            "discovery": discovery.to_dict(),
             "entities": [entity.to_dict() for entity in extraction.entities],
             "edges": [edge.to_dict() for edge in extraction.edges],
         }
@@ -127,3 +145,81 @@ class MemoryIngestionService:
                 edges.append(Edge(skill.id, target.id, "implements", 0.70, [evidence_id]))
 
         return edges
+
+    def _memory_from_discovery(
+        self,
+        discovery: Discovery,
+        skill_id: str | None,
+    ) -> tuple[list[Entity], list[Edge]]:
+        evidence_ids = discovery.evidence_ids
+        source_confidence = discovery.confidence
+        process_name = f"{discovery.process} process"
+        process = Entity(
+            id=entity_id(EntityType.PROCESS, process_name),
+            type=EntityType.PROCESS,
+            name=process_name,
+            attributes={"steps": discovery.steps},
+            confidence=source_confidence,
+            sources=evidence_ids,
+        )
+        policy = Entity(
+            id=entity_id(EntityType.POLICY, discovery.policies.get("name", f"{discovery.process} policy")),
+            type=EntityType.POLICY,
+            name=str(discovery.policies.get("name", f"{discovery.process} policy")),
+            attributes={key: value for key, value in discovery.policies.items() if key != "name"},
+            confidence=source_confidence,
+            sources=evidence_ids,
+        )
+
+        entities = [process, policy]
+        edges = [Edge(process.id, policy.id, "governed_by", source_confidence, evidence_ids)]
+
+        if discovery.owner:
+            owner = Entity(
+                id=entity_id(EntityType.TEAM, discovery.owner),
+                type=EntityType.TEAM,
+                name=discovery.owner,
+                confidence=source_confidence,
+                sources=evidence_ids,
+            )
+            entities.append(owner)
+            edges.append(Edge(owner.id, policy.id, "owns", source_confidence, evidence_ids))
+            edges.append(Edge(process.id, owner.id, "requires_approval", source_confidence, evidence_ids))
+
+        if discovery.tool:
+            tool = Entity(
+                id=entity_id(EntityType.TOOL, discovery.tool),
+                type=EntityType.TOOL,
+                name=discovery.tool,
+                confidence=source_confidence,
+                sources=evidence_ids,
+            )
+            entities.append(tool)
+            edges.append(Edge(process.id, tool.id, "uses", source_confidence, evidence_ids))
+
+        for exception in discovery.exceptions:
+            exception_type = EntityType.CUSTOMER if "customer" in exception.lower() else EntityType.INCIDENT
+            exception_entity = Entity(
+                id=entity_id(exception_type, exception),
+                type=exception_type,
+                name=exception,
+                attributes={"exception": True},
+                confidence=source_confidence,
+                sources=evidence_ids,
+            )
+            entities.append(exception_entity)
+            edges.append(Edge(policy.id, exception_entity.id, "has_exception", source_confidence, evidence_ids))
+
+        if skill_id:
+            skill = Entity(
+                id=entity_id(EntityType.SKILL, skill_id),
+                type=EntityType.SKILL,
+                name=skill_id,
+                attributes={"skill_id": skill_id},
+                confidence=source_confidence,
+                sources=evidence_ids,
+            )
+            entities.append(skill)
+            edges.append(Edge(skill.id, policy.id, "implements", source_confidence, evidence_ids))
+
+        return entities, edges

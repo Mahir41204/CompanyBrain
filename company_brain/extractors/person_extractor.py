@@ -12,6 +12,7 @@ class PersonExtractor:
         names = set()
         patterns = [
             r"escalate\s+to\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
+            r"escalate\b.*?\bto\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
             r"ask\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
             r"notify\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
             r"@([A-Za-z][A-Za-z0-9_.-]+)",

@@ -1,0 +1,76 @@
+[
+  {
+    "id": "snapshot_refund_policy_2025",
+    "entity_id": "policy_refund_policy",
+    "valid_from": "2025-01-01T00:00:00Z",
+    "valid_until": "2026-01-01T00:00:00Z",
+    "previous": null,
+    "attributes": {
+      "approval_threshold_usd": 500,
+      "grace_period_days": 90
+    },
+    "sources": [
+      "evidence_seed_refund_policy"
+    ],
+    "confidence": 0.82
+  },
+  {
+    "id": "snapshot_refund_policy_2026",
+    "entity_id": "policy_refund_policy",
+    "valid_from": "2026-01-01T00:00:00Z",
+    "valid_until": "2027-01-01T00:00:00Z",
+    "previous": "snapshot_refund_policy_2025",
+    "attributes": {
+      "approval_threshold_usd": 700,
+      "grace_period_days": 90
+    },
+    "sources": [
+      "evidence_seed_refund_policy"
+    ],
+    "confidence": 0.84
+  },
+  {
+    "id": "snapshot_refund_policy_2027",
+    "entity_id": "policy_refund_policy",
+    "valid_from": "2027-01-01T00:00:00Z",
+    "valid_until": "",
+    "previous": "snapshot_refund_policy_2026",
+    "attributes": {
+      "approval_threshold_usd": 700,
+      "grace_period_days": 90,
+      "vip_bypass_allowed": true
+    },
+    "sources": [
+      "evidence_seed_refund_policy"
+    ],
+    "confidence": 0.86
+  },
+  {
+    "id": "snapshot_supplier_policy_2026",
+    "entity_id": "policy_supplier_approval_policy",
+    "valid_from": "2026-01-01T00:00:00Z",
+    "valid_until": "",
+    "previous": null,
+    "attributes": {
+      "high_risk_requires": "compliance review"
+    },
+    "sources": [
+      "evidence_seed_supplier_policy"
+    ],
+    "confidence": 0.88
+  },
+  {
+    "id": "snapshot_pricing_policy_2026",
+    "entity_id": "policy_pricing_exception_policy",
+    "valid_from": "2026-01-01T00:00:00Z",
+    "valid_until": "",
+    "previous": null,
+    "attributes": {
+      "vp_approval_discount_threshold": 20
+    },
+    "sources": [
+      "evidence_seed_pricing_policy"
+    ],
+    "confidence": 0.86
+  }
+]

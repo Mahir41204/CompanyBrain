@@ -18,8 +18,22 @@ from .learning import LearningService
 from .memory.event_store import Event, EventStore
 from .memory.process_mining import ProcessMiner
 from .models import skill_summary
+from .reasoning import (
+    ConfidenceRanker,
+    ConflictDetector,
+    ConflictResolver,
+    MemoryExplainer,
+    OrganizationalSimulator,
+)
 from .repository import SkillRepository
-from .storage import EdgeRepository, EntityRepository, EvidenceRepository
+from .runtime import AgentRuntime
+from .storage import (
+    DiscoveryRepository,
+    EdgeRepository,
+    EntityRepository,
+    EvidenceRepository,
+    SnapshotRepository,
+)
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -34,6 +48,8 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
     entity_repository = EntityRepository(data_dir)
     edge_repository = EdgeRepository(data_dir)
     evidence_repository = EvidenceRepository(data_dir)
+    discovery_repository = DiscoveryRepository(data_dir)
+    snapshot_repository = SnapshotRepository(data_dir)
     event_store = EventStore(data_dir)
     process_miner = ProcessMiner()
 
@@ -99,7 +115,8 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     search_query = self._query_value(query, "q") or self._query_value(query, "query")
                     if not search_query:
                         raise ValueError("Query parameter q is required")
-                    self._send_json(load_graph().explain(search_query))
+                    at = self._query_value(query, "at")
+                    self._send_json(MemoryExplainer(load_graph(), snapshot_repository.list_snapshots()).explain(search_query, at))
                     return
                 if len(parts) == 4 and parts[:3] == ["brain", "graph", "neighbors"]:
                     self._send_json({"neighbors": load_graph().neighbors(parts[3])})
@@ -114,6 +131,34 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     return
                 if parts == ["brain", "processes", "flows"]:
                     self._send_json(process_miner.discover_flow(event_store.list_events()))
+                    return
+                if parts == ["brain", "discoveries"]:
+                    self._send_json(
+                        {"discoveries": [discovery.to_dict() for discovery in discovery_repository.list_discoveries()]}
+                    )
+                    return
+                if parts == ["brain", "snapshots"]:
+                    entity_id = self._query_value(query, "entity_id")
+                    self._send_json(
+                        {"snapshots": [snapshot.to_dict() for snapshot in snapshot_repository.list_snapshots(entity_id)]}
+                    )
+                    return
+                if parts == ["brain", "conflicts"]:
+                    snapshots = snapshot_repository.list_snapshots()
+                    conflicts = ConflictDetector().detect(snapshots)
+                    resolver = ConflictResolver()
+                    self._send_json(
+                        {
+                            "conflicts": [conflict.to_dict() for conflict in conflicts],
+                            "resolution_suggestions": [
+                                resolver.suggest(conflict, snapshots) for conflict in conflicts
+                            ],
+                        }
+                    )
+                    return
+                if parts == ["brain", "confidence", "rankings"]:
+                    ranked = ConfidenceRanker().rank_entities(entity_repository.list_entities())
+                    self._send_json({"rankings": ranked})
                     return
 
                 self._send_error(HTTPStatus.NOT_FOUND, "Not found")
@@ -166,6 +211,29 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     if not query:
                         raise ValueError("query is required")
                     self._send_json(ExecutionPlanner(load_graph()).build_plan(query))
+                    return
+
+                if parts == ["brain", "simulate"]:
+                    query = str(payload.get("query", "")).strip()
+                    if not query:
+                        raise ValueError("query is required")
+                    self._send_json(OrganizationalSimulator(load_graph()).simulate_removal(query))
+                    return
+
+                if parts == ["brain", "agent-tasks"]:
+                    goal = str(payload.get("goal", "")).strip()
+                    if not goal:
+                        raise ValueError("goal is required")
+                    context = payload.get("context", {})
+                    if not isinstance(context, dict):
+                        raise ValueError("context must be an object")
+                    execute_task = bool(payload.get("execute", True))
+                    runtime = AgentRuntime(load_graph(), repository, decision_engine, learning_service)
+                    task = runtime.run(goal, context, execute=execute_task)
+                    response = {"task": task.to_dict()}
+                    if payload.get("outcome"):
+                        response["learning"] = runtime.learn(task, str(payload["outcome"]), payload.get("notes"))
+                    self._send_json(response, status=HTTPStatus.CREATED)
                     return
 
                 if len(parts) == 4 and parts[:2] == ["brain", "candidates"] and parts[3] == "approve":

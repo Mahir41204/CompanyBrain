@@ -1,6 +1,6 @@
 # Company Brain MVP
 
-This repository contains a runnable first slice of the Company Brain idea: executable company knowledge packaged as skills that agents can query, execute, and improve with outcome feedback.
+This repository contains a runnable Company Brain MVP: executable company knowledge plus the organizational memory needed for agents to discover, reason about, and act on company operations.
 
 The MVP is intentionally dependency-light. It uses Python's standard library for the API server and stores skills as pretty-printed JSON files with a `.skill.json` suffix. JSON is valid YAML 1.2, so these files can be moved to a YAML parser later without changing the shape of the skill schema.
 
@@ -11,12 +11,35 @@ The MVP is intentionally dependency-light. It uses Python's standard library for
 - Ingestion service that turns raw operational notes into human-reviewable candidate skills
 - Outcome learning that adjusts confidence scores and logs feedback
 - Company Memory Graph with entities, relationships, evidence, and history
+- Discovery engine that extracts process, steps, owners, exceptions, tools, and policies
+- Temporal Brain snapshots for history-aware memory
+- Conflict detection, confidence ranking, and resolution suggestions
+- Organizational simulator for "what breaks if X disappears?"
 - Process mining over operational events
-- Execution planning from graph relationships
+- Agent runtime for `goal -> plan -> execute -> learn`
 - Coverage endpoint for skill confidence, domain coverage, and review backlog
 - Static admin dashboard for skills, execution, review, ingestion, and coverage
 - Seed skills for refunds, enterprise pricing exceptions, and supplier approval
 - Unit tests for the decision engine, repository, candidate approval, and learning loop
+
+## Architecture
+
+```text
+INGESTION
+  raw Slack/wiki/ticket/meeting/source records
+    ↓
+DISCOVERY
+  process, steps, owner, exceptions, policy, tool
+    ↓
+MEMORY GRAPH
+  entities, relationships, evidence, temporal snapshots
+    ↓
+REASONING
+  explain, rank, detect conflicts, simulate org changes
+    ↓
+EXECUTION
+  plan, execute skill-backed steps, record feedback
+```
 
 ## Run Locally
 
@@ -50,9 +73,15 @@ On Windows, `python run_server.py --host 127.0.0.1 --port 8000` is an equivalent
 | `GET` | `/brain/graph/explain?q=enterprise%20refund` | Explain a memory query with relationships and evidence |
 | `GET` | `/brain/graph/neighbors/{entity_id}` | Return graph neighbors for an entity |
 | `GET` | `/brain/graph/path?from=a&to=b` | Find a path between two entities |
+| `GET` | `/brain/discoveries` | Return structured discoveries extracted from source records |
+| `GET` | `/brain/snapshots?entity_id=policy_refund_policy` | Return temporal memory snapshots |
+| `GET` | `/brain/conflicts` | Detect policy/process conflicts across temporal memory |
+| `GET` | `/brain/confidence/rankings` | Rank graph entities by confidence and evidence support |
 | `POST` | `/brain/events` | Store operational events for process mining |
 | `GET` | `/brain/processes/flows` | Return discovered event transitions |
 | `POST` | `/brain/plan` | Build an execution plan from graph memory |
+| `POST` | `/brain/simulate` | Simulate removal of a person, team, tool, policy, or process |
+| `POST` | `/brain/agent-tasks` | Run the agent runtime for a goal |
 
 ## Example Execution
 
@@ -79,6 +108,33 @@ Invoke-RestMethod `
   -Uri http://127.0.0.1:8000/brain/plan `
   -ContentType application/json `
   -Body '{"query":"refund process"}'
+```
+
+## Example Conflict Detection
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/brain/conflicts
+```
+
+## Example Simulator
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/brain/simulate `
+  -ContentType application/json `
+  -Body '{"query":"Zendesk"}'
+```
+
+## Example Agent Task
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/brain/agent-tasks `
+  -ContentType application/json `
+  -Body '{"goal":"enterprise refund","context":{"customer_tier":"enterprise"},"outcome":"success"}'
 ```
 
 ## Tests
