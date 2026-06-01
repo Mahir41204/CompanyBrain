@@ -6,6 +6,7 @@ from typing import Any
 from company_brain.core.graph import BrainGraph
 from company_brain.graph.temporal import MemorySnapshot
 from company_brain.reasoning import ConflictDetector
+from company_brain.reasoning.relation_strength import relation_strength
 
 
 class GraphViewService:
@@ -37,7 +38,7 @@ class GraphViewService:
         edges = [
             {
                 **edge.to_dict(),
-                "strength": round(edge.confidence * 100),
+                "strength": relation_strength(edge),
                 "source": self.graph.entities.get(edge.source_id).to_dict() if edge.source_id in self.graph.entities else None,
                 "target": self.graph.entities.get(edge.target_id).to_dict() if edge.target_id in self.graph.entities else None,
                 "evidence": self._evidence(edge.evidence),

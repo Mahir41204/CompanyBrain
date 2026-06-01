@@ -37,9 +37,11 @@ class DashboardService:
                 "knowledge_risk_score": {
                     "value": risk_score,
                     "max": 100,
-                    "delta": 4 if risk_score >= 70 else -2,
-                    "direction": "up" if risk_score >= 70 else "down",
+                    "delta": None,
+                    "direction": "unknown",
                     "label": "Knowledge Risk Score",
+                    "basis": "Current conflicts, unknown owners, memory freshness, and graph confidence.",
+                    "trend_note": "Insufficient historical data.",
                 },
                 "nodes": len(self.graph.entities),
                 "relations": len(self.graph.edges),
@@ -76,24 +78,41 @@ class DashboardService:
         confidence_penalty = int((1 - confidence) * 30)
         return max(0, min(100, 58 + conflict_penalty + unknown_penalty + freshness_penalty + confidence_penalty))
 
-    def _coverage_trend(self) -> list[dict[str, Any]]:
-        current = int(round(float(self.coverage.get("operations_covered_estimate", 0)) * 100))
-        if current <= 0:
-            current = 61
-        return [
-            {"label": "90d ago", "value": max(0, current - 17)},
-            {"label": "60d ago", "value": max(0, current - 11)},
-            {"label": "30d ago", "value": max(0, current - 6)},
-            {"label": "Today", "value": current},
-        ]
+    def _coverage_trend(self) -> dict[str, Any]:
+        dates = sorted({snapshot.valid_from[:10] for snapshot in self.snapshots if snapshot.valid_from})
+        if len(dates) < 2:
+            return {
+                "available": False,
+                "message": "Insufficient historical data.",
+                "points": [],
+            }
+
+        points = []
+        total_entities = max(len(self.graph.entities), 1)
+        for date in dates:
+            entities_seen = {snapshot.entity_id for snapshot in self.snapshots if snapshot.valid_from[:10] <= date}
+            points.append(
+                {
+                    "label": date,
+                    "value": round(len(entities_seen) / total_entities * 100),
+                    "snapshot_count": len(entities_seen),
+                }
+            )
+        return {
+            "available": True,
+            "message": "Measured from temporal memory snapshots.",
+            "points": points,
+        }
 
     def _coverage_drilldown(self) -> list[dict[str, Any]]:
         processes = [entity for entity in self.graph.entities.values() if entity.type.value == "process"]
         policies = [entity for entity in self.graph.entities.values() if entity.type.value == "policy"]
-        owned = {
-            edge.target_id for edge in self.graph.edges.values()
-            if edge.relation in {"owns", "requires_approval", "approves"}
-        }
+        owned = set()
+        for edge in self.graph.edges.values():
+            if edge.relation in {"owns", "approves"}:
+                owned.add(edge.target_id)
+            elif edge.relation == "requires_approval":
+                owned.add(edge.source_id)
         dependencies = {
             edge.source_id for edge in self.graph.edges.values()
             if edge.relation in {"uses", "depends_on", "governed_by", "requires_approval"}
@@ -127,10 +146,12 @@ class DashboardService:
         ]
 
     def _unknown_owners(self) -> list[dict[str, Any]]:
-        owned_targets = {
-            edge.target_id for edge in self.graph.edges.values()
-            if edge.relation in {"owns", "approves", "requires_approval"}
-        }
+        owned_targets = set()
+        for edge in self.graph.edges.values():
+            if edge.relation in {"owns", "approves"}:
+                owned_targets.add(edge.target_id)
+            elif edge.relation == "requires_approval":
+                owned_targets.add(edge.source_id)
         rows = []
         for entity in self.graph.entities.values():
             if entity.type.value not in {"process", "policy", "decision"}:

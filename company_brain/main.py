@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+from .connectors import NotionConnector
 from .coverage import CoverageService
 from .core.graph import BrainGraph
 from .decision_engine import DecisionEngine
@@ -19,7 +20,17 @@ from .memory.event_store import Event, EventStore
 from .memory.health import MemoryHealth
 from .memory.process_mining import ProcessMiner
 from .models import skill_summary
-from .product import DashboardService, GraphViewService, SimulationService
+from .product import (
+    CoverageViewService,
+    DashboardService,
+    EvidenceExplorerService,
+    GraphViewService,
+    PeopleExplorerService,
+    ProcessExplorerService,
+    RiskCenterService,
+    SimulationService,
+    SourceDashboardService,
+)
 from .reasoning import (
     BrainQueryEngine,
     ConfidenceRanker,
@@ -29,6 +40,7 @@ from .reasoning import (
     OrganizationalEvolution,
     OrganizationalSimulator,
 )
+from .reasoning.semantic_search import SemanticSearchService
 from .repository import SkillRepository
 from .runtime import AgentRuntime
 from .storage import (
@@ -36,7 +48,9 @@ from .storage import (
     EdgeRepository,
     EntityRepository,
     EvidenceRepository,
+    LLMDiscoveryRepository,
     SnapshotRepository,
+    SourceSyncRepository,
 )
 
 
@@ -53,9 +67,12 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
     edge_repository = EdgeRepository(data_dir)
     evidence_repository = EvidenceRepository(data_dir)
     discovery_repository = DiscoveryRepository(data_dir)
+    llm_discovery_repository = LLMDiscoveryRepository(data_dir)
     snapshot_repository = SnapshotRepository(data_dir)
+    source_repository = SourceSyncRepository(data_dir)
     event_store = EventStore(data_dir)
     process_miner = ProcessMiner()
+    notion_connector = NotionConnector(data_dir=data_dir, sources=source_repository)
 
     def load_graph() -> BrainGraph:
         return BrainGraph(
@@ -120,6 +137,13 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     limit = int(self._query_value(query, "limit") or "8")
                     self._send_json(query_engine().search(search_query, limit=limit))
                     return
+                if parts == ["brain", "semantic-search"]:
+                    search_query = self._query_value(query, "q") or self._query_value(query, "query")
+                    if not search_query:
+                        raise ValueError("Query parameter q is required")
+                    limit = int(self._query_value(query, "limit") or "10")
+                    self._send_json(SemanticSearchService(load_graph()).search(search_query, limit=limit))
+                    return
                 if parts == ["brain", "graph"]:
                     self._send_json(load_graph().to_dict())
                     return
@@ -162,6 +186,34 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     self._send_json(
                         {"discoveries": [discovery.to_dict() for discovery in discovery_repository.list_discoveries()]}
                     )
+                    return
+                if parts == ["brain", "llm-discoveries"]:
+                    self._send_json({"discoveries": llm_discovery_repository.list_results()})
+                    return
+                if parts == ["brain", "processes"]:
+                    self._send_json(
+                        ProcessExplorerService(
+                            load_graph(),
+                            discovery_repository.list_discoveries(),
+                            llm_discovery_repository.list_results(),
+                        ).build()
+                    )
+                    return
+                if parts == ["brain", "people"]:
+                    self._send_json(PeopleExplorerService(load_graph()).build())
+                    return
+                if parts == ["brain", "evidence"]:
+                    search_query = self._query_value(query, "q") or self._query_value(query, "query")
+                    self._send_json(EvidenceExplorerService(load_graph(), llm_discovery_repository.list_results()).build(search_query))
+                    return
+                if parts == ["brain", "risks"]:
+                    self._send_json(RiskCenterService(load_graph(), snapshot_repository.list_snapshots(), coverage_service.compute()).build())
+                    return
+                if parts == ["brain", "coverage", "view"]:
+                    self._send_json(CoverageViewService(load_graph(), coverage_service.compute()).build())
+                    return
+                if parts == ["brain", "sources"]:
+                    self._send_json(SourceDashboardService(source_repository, notion_connector).build())
                     return
                 if parts == ["brain", "snapshots"]:
                     entity_id = self._query_value(query, "entity_id")
@@ -290,6 +342,16 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
 
                 if parts == ["brain", "simulation", "run"]:
                     self._send_json(SimulationService(load_graph()).run(payload))
+                    return
+
+                if parts == ["brain", "connectors", "notion", "sync"]:
+                    api_key = payload.get("api_key")
+                    connector = NotionConnector(
+                        data_dir=data_dir,
+                        api_key=str(api_key) if api_key else None,
+                        sources=source_repository,
+                    )
+                    self._send_json(connector.sync(payload), status=HTTPStatus.CREATED)
                     return
 
                 if parts == ["brain", "agent-tasks"]:

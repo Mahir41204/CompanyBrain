@@ -103,22 +103,25 @@ class BrainGraph:
         if not tokens:
             return []
 
-        scored: list[tuple[int, Entity]] = []
+        scored: list[tuple[int, int, float, Entity]] = []
         for entity in self.entities.values():
-            haystack = " ".join(
+            name_haystack = " ".join(
                 [
                     entity.id.lower().replace("_", " "),
                     entity.name.lower(),
                     entity.type.value.lower(),
-                    " ".join(str(value).lower() for value in entity.attributes.values()),
                 ]
             )
-            score = sum(1 for token in tokens if token in haystack)
+            attribute_haystack = " ".join(str(value).lower() for value in entity.attributes.values())
+            name_score = sum(3 for token in tokens if token in name_haystack)
+            attribute_score = sum(1 for token in tokens if token in attribute_haystack)
+            score = name_score + attribute_score
             if score:
-                scored.append((score, entity))
+                exactness = 1 if query.lower().strip() in {entity.name.lower(), entity.id.lower()} else 0
+                scored.append((score, exactness, entity.confidence, entity))
 
-        scored.sort(key=lambda item: (item[0], item[1].confidence), reverse=True)
-        return [entity for _, entity in scored[:limit]]
+        scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+        return [entity for _, _, _, entity in scored[:limit]]
 
     def explain(self, query: str) -> dict[str, Any]:
         matches = self.search(query, limit=6)

@@ -7,7 +7,7 @@ from typing import Any
 from company_brain.core.edges import Edge
 from company_brain.core.entities import Entity, EntityType, entity_id
 from company_brain.core.evidence import Evidence
-from company_brain.discovery import Discovery, DiscoveryEngine, RelationDiscovery
+from company_brain.discovery import Discovery, DiscoveryEngine, LLMDiscoveryEngine, LLMDiscoveryResult, RelationDiscovery
 from company_brain.extractors import (
     DecisionExtractor,
     ExtractionResult,
@@ -22,6 +22,7 @@ from company_brain.storage import (
     EdgeRepository,
     EntityRepository,
     EvidenceRepository,
+    LLMDiscoveryRepository,
     SnapshotRepository,
 )
 
@@ -32,7 +33,9 @@ class MemoryIngestionService:
         self.edges = EdgeRepository(data_dir)
         self.evidence = EvidenceRepository(data_dir)
         self.discoveries = DiscoveryRepository(data_dir)
+        self.llm_results = LLMDiscoveryRepository(data_dir)
         self.snapshots = SnapshotRepository(data_dir)
+        self.llm_discovery = LLMDiscoveryEngine()
         self.discovery_engine = DiscoveryEngine()
         self.relation_discovery = RelationDiscovery()
         self.extractors = [
@@ -51,10 +54,24 @@ class MemoryIngestionService:
         evidence = self._evidence_from(record, text)
         self.evidence.upsert(evidence)
 
+        llm_result = self.llm_discovery.discover(record, evidence.id)
+        self.llm_results.upsert(
+            f"llm_{evidence.id}",
+            {
+                **llm_result.to_dict(),
+                "evidence_id": evidence.id,
+                "source": record.get("source", "manual_note"),
+                "created_at": utc_now(),
+            },
+        )
+
         extraction = ExtractionResult()
         for extractor in self.extractors:
             extraction.extend(extractor.extract(text, evidence.id))
 
+        llm_entities, llm_edges = self._memory_from_llm_discovery(llm_result, skill_id)
+        extraction.entities.extend(llm_entities)
+        extraction.edges.extend(llm_edges)
         extraction.edges.extend(self._derive_edges(text, extraction.entities, evidence.id, skill_id))
         discovery = self.discovery_engine.discover(record, evidence.id)
         self.discoveries.upsert(discovery)
@@ -70,6 +87,7 @@ class MemoryIngestionService:
 
         return {
             "evidence": evidence.to_dict(),
+            "llm_discovery": llm_result.to_dict(),
             "discovery": discovery.to_dict(),
             "entities": [entity.to_dict() for entity in extraction.entities],
             "edges": [edge.to_dict() for edge in extraction.edges],
@@ -90,6 +108,162 @@ class MemoryIngestionService:
             timestamp=timestamp,
             confidence=float(metadata.get("confidence", 0.78)),
         )
+
+    def _memory_from_llm_discovery(
+        self,
+        result: LLMDiscoveryResult,
+        skill_id: str | None,
+    ) -> tuple[list[Entity], list[Edge]]:
+        entities: dict[str, Entity] = {}
+        edges: list[Edge] = []
+        name_index: dict[str, str] = {}
+
+        def remember(entity: Entity) -> Entity:
+            if entity.id in entities:
+                entities[entity.id].merge(entity)
+            else:
+                entities[entity.id] = entity
+            name_index[entity.name.strip().lower()] = entity.id
+            return entities[entity.id]
+
+        def make_entity(
+            name: str,
+            entity_type: EntityType,
+            confidence: float,
+            evidence_ids: list[str],
+            attributes: dict[str, Any] | None = None,
+        ) -> Entity:
+            return remember(
+                Entity(
+                    id=entity_id(entity_type, name),
+                    type=entity_type,
+                    name=name,
+                    attributes=attributes or {},
+                    confidence=confidence,
+                    sources=evidence_ids,
+                )
+            )
+
+        for row in result.entities:
+            name = str(row.get("name", "")).strip()
+            if not name:
+                continue
+            entity_type = EntityType(str(row.get("type", "process")))
+            make_entity(
+                name,
+                entity_type,
+                float(row.get("confidence", 0.5)),
+                list(row.get("evidence", [])),
+                dict(row.get("attributes", {})),
+            )
+
+        for row in result.processes:
+            name = str(row.get("name", "")).strip()
+            if not name:
+                continue
+            confidence = float(row.get("confidence", 0.5))
+            evidence_ids = list(row.get("evidence", []))
+            process = make_entity(
+                name,
+                EntityType.PROCESS,
+                confidence,
+                evidence_ids,
+                {
+                    "steps": list(row.get("steps", [])),
+                    "dependencies": list(row.get("dependencies", [])),
+                    "tools": list(row.get("tools", [])),
+                    "policies": list(row.get("policies", [])),
+                    "exceptions": list(row.get("exceptions", [])),
+                },
+            )
+            owner_name = str(row.get("owner") or "").strip()
+            if owner_name:
+                owner = make_entity(
+                    owner_name,
+                    self._owner_type(owner_name),
+                    confidence,
+                    evidence_ids,
+                )
+                edges.append(Edge(owner.id, process.id, "owns", confidence, evidence_ids))
+                edges.append(Edge(process.id, owner.id, "requires_approval", confidence, evidence_ids))
+            for tool_name in list(row.get("tools", [])):
+                tool = make_entity(str(tool_name), EntityType.TOOL, confidence, evidence_ids)
+                edges.append(Edge(process.id, tool.id, "uses", confidence, evidence_ids))
+            for dependency in list(row.get("dependencies", [])):
+                dependency_entity = make_entity(str(dependency), EntityType.TOOL, confidence, evidence_ids)
+                edges.append(Edge(process.id, dependency_entity.id, "depends_on", confidence, evidence_ids))
+            for policy_name in list(row.get("policies", [])):
+                policy = make_entity(str(policy_name), EntityType.POLICY, confidence, evidence_ids)
+                edges.append(Edge(process.id, policy.id, "governed_by", confidence, evidence_ids))
+            for exception in list(row.get("exceptions", [])):
+                exception_type = EntityType.CUSTOMER if "customer" in str(exception).lower() else EntityType.INCIDENT
+                exception_entity = make_entity(
+                    str(exception),
+                    exception_type,
+                    confidence,
+                    evidence_ids,
+                    {"exception": True},
+                )
+                edges.append(Edge(process.id, exception_entity.id, "has_exception", confidence, evidence_ids))
+
+        for row in result.policies:
+            name = str(row.get("name", "")).strip()
+            if not name:
+                continue
+            confidence = float(row.get("confidence", 0.5))
+            evidence_ids = list(row.get("evidence", []))
+            policy = make_entity(
+                name,
+                EntityType.POLICY,
+                confidence,
+                evidence_ids,
+                {
+                    "rules": dict(row.get("rules", {})),
+                    "exceptions": list(row.get("exceptions", [])),
+                },
+            )
+            owner_name = str(row.get("owner") or "").strip()
+            if owner_name:
+                owner = make_entity(owner_name, self._owner_type(owner_name), confidence, evidence_ids)
+                edges.append(Edge(owner.id, policy.id, "owns", confidence, evidence_ids))
+            for exception in list(row.get("exceptions", [])):
+                exception_type = EntityType.CUSTOMER if "customer" in str(exception).lower() else EntityType.INCIDENT
+                exception_entity = make_entity(
+                    str(exception),
+                    exception_type,
+                    confidence,
+                    evidence_ids,
+                    {"exception": True},
+                )
+                edges.append(Edge(policy.id, exception_entity.id, "has_exception", confidence, evidence_ids))
+
+        for row in result.relationships:
+            source_name = str(row.get("source", "")).strip().lower()
+            target_name = str(row.get("target", "")).strip().lower()
+            source_id = name_index.get(source_name)
+            target_id = name_index.get(target_name)
+            if not source_id or not target_id:
+                continue
+            relation = str(row.get("relation", "depends_on"))
+            confidence = float(row.get("confidence", 0.5))
+            evidence_ids = list(row.get("evidence", []))
+            edges.append(Edge(source_id, target_id, relation, confidence, evidence_ids))
+            if relation == "governs":
+                edges.append(Edge(target_id, source_id, "governed_by", confidence, evidence_ids))
+
+        if skill_id:
+            skill = make_entity(
+                skill_id,
+                EntityType.SKILL,
+                0.68,
+                sorted({source for entity in entities.values() for source in entity.sources}),
+                {"skill_id": skill_id},
+            )
+            for entity in list(entities.values()):
+                if entity.type in {EntityType.POLICY, EntityType.PROCESS}:
+                    edges.append(Edge(skill.id, entity.id, "implements", skill.confidence, entity.sources))
+
+        return list(entities.values()), edges
 
     def _derive_edges(
         self,
@@ -225,3 +399,10 @@ class MemoryIngestionService:
             edges.append(Edge(skill.id, policy.id, "implements", source_confidence, evidence_ids))
 
         return entities, edges
+
+    @staticmethod
+    def _owner_type(name: str) -> EntityType:
+        lower = name.lower()
+        if "team" in lower or lower in {"finance", "support", "sales", "engineering", "ops", "operations", "legal"}:
+            return EntityType.TEAM
+        return EntityType.PERSON

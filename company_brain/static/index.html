@@ -13,7 +13,14 @@
         <nav class="nav" aria-label="Main">
           <button class="nav-item active" data-view="overview">Overview</button>
           <button class="nav-item" data-view="graph">Knowledge Graph</button>
-          <button class="nav-item" data-view="simulate">Simulate</button>
+          <button class="nav-item" data-view="people">People & Teams</button>
+          <button class="nav-item" data-view="processes">Processes</button>
+          <button class="nav-item" data-view="coverage">Coverage</button>
+          <button class="nav-item" data-view="risks">Gaps & Risks</button>
+          <button class="nav-item" data-view="simulate">Simulation</button>
+          <button class="nav-item" data-view="evidence">Evidence</button>
+          <button class="nav-item" data-view="sources">Sources</button>
+          <button class="nav-item" data-view="settings">Settings</button>
         </nav>
         <div class="sidebar-status">
           <span class="status-dot"></span>
@@ -131,6 +138,81 @@
           </div>
         </section>
 
+        <section class="view" id="peopleView">
+          <header class="page-head">
+            <div>
+              <h1>People & teams</h1>
+              <p id="peopleSubtitle">Ownership, approvals, escalations, and knowledge concentration</p>
+            </div>
+            <button class="primary" id="refreshPeople">Refresh</button>
+          </header>
+          <div class="kpi-grid compact-grid" id="peopleKpis"></div>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Knowledge Concentration</h2>
+              <span>Highest dependency load first</span>
+            </div>
+            <div class="list-grid" id="peopleList"></div>
+          </section>
+        </section>
+
+        <section class="view" id="processesView">
+          <header class="page-head">
+            <div>
+              <h1>Process explorer</h1>
+              <p id="processSubtitle">Owners, steps, dependencies, policies, exceptions, confidence, and evidence</p>
+            </div>
+            <button class="primary" id="refreshProcesses">Refresh</button>
+          </header>
+          <div class="kpi-grid compact-grid" id="processKpis"></div>
+          <div class="list-grid" id="processList"></div>
+        </section>
+
+        <section class="view" id="coverageView">
+          <header class="page-head">
+            <div>
+              <h1>Coverage</h1>
+              <p>Documented processes, mapped policies, known owners, and dependencies</p>
+            </div>
+            <button class="primary" id="refreshCoverage">Refresh</button>
+          </header>
+          <div class="kpi-grid compact-grid" id="coverageKpis"></div>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Process Coverage</h2>
+              <span>Measured from graph state</span>
+            </div>
+            <div class="gap-table" id="coverageTable"></div>
+          </section>
+        </section>
+
+        <section class="view" id="risksView">
+          <header class="page-head">
+            <div>
+              <h1>Gaps & risks</h1>
+              <p>Conflicts, missing owners, bottlenecks, stale memory, and recommended actions</p>
+            </div>
+            <button class="primary" id="refreshRisks">Refresh</button>
+          </header>
+          <div class="kpi-grid compact-grid" id="riskKpis"></div>
+          <div class="layout two">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Prioritized Gaps</h2>
+                <span>Impact-ranked</span>
+              </div>
+              <div class="stack" id="riskGaps"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Actions</h2>
+                <span>Next customer-ready moves</span>
+              </div>
+              <div class="stack" id="riskActions"></div>
+            </section>
+          </div>
+        </section>
+
         <section class="view" id="simulateView">
           <header class="page-head">
             <div>
@@ -210,6 +292,73 @@
                 </div>
                 <div class="recommendation-grid" id="simulationRecommendations"></div>
               </section>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="evidenceView">
+          <header class="page-head">
+            <div>
+              <h1>Evidence explorer</h1>
+              <p>Source-backed entities, relationships, processes, and policies</p>
+            </div>
+            <div class="toolbar compact">
+              <input id="evidenceSearch" class="field short-field" placeholder="Search evidence">
+              <button class="primary" id="refreshEvidence">Search</button>
+            </div>
+          </header>
+          <div class="kpi-grid compact-grid" id="evidenceKpis"></div>
+          <div class="list-grid" id="evidenceList"></div>
+        </section>
+
+        <section class="view" id="sourcesView">
+          <header class="page-head">
+            <div>
+              <h1>Sources</h1>
+              <p>Connected systems, sync status, attribution, and extraction volume</p>
+            </div>
+            <button class="primary" id="refreshSources">Refresh</button>
+          </header>
+          <div class="kpi-grid compact-grid" id="sourceKpis"></div>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Connector Status</h2>
+              <span>First connector: Notion</span>
+            </div>
+            <div class="stack" id="sourceList"></div>
+          </section>
+        </section>
+
+        <section class="view" id="settingsView">
+          <header class="page-head">
+            <div>
+              <h1>Settings</h1>
+              <p>Sync Notion or ingest a customer source note</p>
+            </div>
+          </header>
+          <div class="layout two">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Notion Sync</h2>
+                <span id="notionSyncStatus">Ready</span>
+              </div>
+              <label class="label">Notion API key</label>
+              <input id="notionApiKey" class="field" type="password" placeholder="secret_...">
+              <label class="label">Page IDs</label>
+              <input id="notionPageIds" class="field" placeholder="comma-separated page ids">
+              <button class="primary full-width" id="syncNotion">Sync Notion</button>
+              <div class="row-meta">API keys are used for this request only and are not written to storage.</div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Manual Source Record</h2>
+                <span id="manualIngestStatus">Ready</span>
+              </div>
+              <label class="label">Source</label>
+              <input id="manualSource" class="field" value="customer_note">
+              <label class="label">Text</label>
+              <textarea id="manualContent" class="field text-area">Enterprise refunds above $500 require finance approval. Handled in Zendesk. Escalate to Sarah if SLA > 3 days.</textarea>
+              <button class="primary full-width" id="ingestManual">Ingest Record</button>
             </section>
           </div>
         </section>
