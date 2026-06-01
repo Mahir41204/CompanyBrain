@@ -16,13 +16,16 @@ from .execution.planner import ExecutionPlanner
 from .ingestion import IngestionService
 from .learning import LearningService
 from .memory.event_store import Event, EventStore
+from .memory.health import MemoryHealth
 from .memory.process_mining import ProcessMiner
 from .models import skill_summary
 from .reasoning import (
+    BrainQueryEngine,
     ConfidenceRanker,
     ConflictDetector,
     ConflictResolver,
     MemoryExplainer,
+    OrganizationalEvolution,
     OrganizationalSimulator,
 )
 from .repository import SkillRepository
@@ -60,6 +63,9 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
             evidence=evidence_repository.list_evidence(),
         )
 
+    def query_engine() -> BrainQueryEngine:
+        return BrainQueryEngine(load_graph(), snapshot_repository.list_snapshots())
+
     class CompanyBrainHandler(BaseHTTPRequestHandler):
         server_version = "CompanyBrain/0.1"
 
@@ -96,6 +102,13 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     return
                 if parts == ["brain", "coverage"]:
                     self._send_json(coverage_service.compute())
+                    return
+                if parts == ["brain", "search"]:
+                    search_query = self._query_value(query, "q") or self._query_value(query, "query")
+                    if not search_query:
+                        raise ValueError("Query parameter q is required")
+                    limit = int(self._query_value(query, "limit") or "8")
+                    self._send_json(query_engine().search(search_query, limit=limit))
                     return
                 if parts == ["brain", "graph"]:
                     self._send_json(load_graph().to_dict())
@@ -159,6 +172,48 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                 if parts == ["brain", "confidence", "rankings"]:
                     ranked = ConfidenceRanker().rank_entities(entity_repository.list_entities())
                     self._send_json({"rankings": ranked})
+                    return
+                if parts == ["brain", "query", "owner"]:
+                    self._send_json(query_engine().find_owner(self._required_query(query)))
+                    return
+                if parts == ["brain", "query", "dependencies"]:
+                    depth = int(self._query_value(query, "depth") or "3")
+                    self._send_json(query_engine().find_dependencies(self._required_query(query), max_depth=depth))
+                    return
+                if parts == ["brain", "query", "affected"]:
+                    depth = int(self._query_value(query, "depth") or "4")
+                    self._send_json(query_engine().find_affected(self._required_query(query), max_depth=depth))
+                    return
+                if parts == ["brain", "query", "trace"]:
+                    self._send_json(query_engine().trace_decision(self._required_query(query)))
+                    return
+                if parts == ["brain", "query", "timeline"]:
+                    search_query = self._query_value(query, "q") or self._query_value(query, "entity_id")
+                    if not search_query:
+                        raise ValueError("Query parameter q or entity_id is required")
+                    self._send_json(query_engine().timeline(search_query))
+                    return
+                if parts == ["brain", "memory", "health"]:
+                    as_of = self._query_value(query, "as_of")
+                    stale_after_days = int(self._query_value(query, "stale_after_days") or "180")
+                    expired_after_days = int(self._query_value(query, "expired_after_days") or "365")
+                    health = MemoryHealth(
+                        entity_repository.list_entities(),
+                        evidence_repository.list_evidence(),
+                        snapshot_repository.list_snapshots(),
+                    )
+                    self._send_json(
+                        health.assess(
+                            as_of=as_of,
+                            stale_after_days=stale_after_days,
+                            expired_after_days=expired_after_days,
+                        )
+                    )
+                    return
+                if parts == ["brain", "evolution"]:
+                    entity_id = self._query_value(query, "entity_id")
+                    evolution = OrganizationalEvolution(load_graph(), snapshot_repository.list_snapshots())
+                    self._send_json(evolution.timeline(entity_id))
                     return
 
                 self._send_error(HTTPStatus.NOT_FOUND, "Not found")
@@ -313,6 +368,12 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
             if not values:
                 return None
             return values[0]
+
+        def _required_query(self, query: dict[str, list[str]]) -> str:
+            value = self._query_value(query, "q") or self._query_value(query, "query")
+            if not value:
+                raise ValueError("Query parameter q is required")
+            return value
 
         def log_message(self, format: str, *args: Any) -> None:
             print(f"{self.address_string()} - {format % args}")

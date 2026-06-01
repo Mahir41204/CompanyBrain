@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from .memory.health import MemoryHealth
 from .repository import SkillRepository
 from .reasoning import ConflictDetector
 from .storage import (
@@ -38,6 +39,11 @@ class CoverageService:
             else 0.0
         )
         denominator = max(total + len(candidates), 1)
+        health = MemoryHealth(
+            self.entities.list_entities(),
+            self.evidence.list_evidence(),
+            self.snapshots.list_snapshots(),
+        ).assess()
 
         return {
             "total_skills": total,
@@ -50,6 +56,8 @@ class CoverageService:
             "discoveries": len(self.discoveries.list_discoveries()),
             "memory_snapshots": len(self.snapshots.list_snapshots()),
             "open_conflicts": len(ConflictDetector().detect(self.snapshots.list_snapshots())),
+            "stale_memory_items": health["summary"]["stale"],
+            "expired_memory_items": health["summary"]["expired"],
             "skills_by_domain": dict(domains),
             "pending_candidates_by_domain": dict(candidate_domains),
             "operations_covered_estimate": round(len(high_confidence) / denominator, 4),

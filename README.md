@@ -14,6 +14,9 @@ The MVP is intentionally dependency-light. It uses Python's standard library for
 - Discovery engine that extracts process, steps, owners, exceptions, tools, and policies
 - Temporal Brain snapshots for history-aware memory
 - Conflict detection, confidence ranking, and resolution suggestions
+- Graph query engine for owners, dependencies, affected systems, traces, and timelines
+- Memory freshness scoring with staleness, expiry, confidence decay, and recommendations
+- Organizational evolution records for what changed, why, who changed it, and likely impact
 - Organizational simulator for "what breaks if X disappears?"
 - Process mining over operational events
 - Agent runtime for `goal -> plan -> execute -> learn`
@@ -35,7 +38,7 @@ MEMORY GRAPH
   entities, relationships, evidence, temporal snapshots
     ↓
 REASONING
-  explain, rank, detect conflicts, simulate org changes
+  search, explain, trace, rank, detect conflicts, simulate org changes
     ↓
 EXECUTION
   plan, execute skill-backed steps, record feedback
@@ -69,14 +72,22 @@ On Windows, `python run_server.py --host 127.0.0.1 --port 8000` is an equivalent
 | `POST` | `/brain/candidates/{candidate_id}/approve` | Promote a candidate into an executable skill |
 | `POST` | `/brain/candidates/{candidate_id}/reject` | Reject a candidate skill |
 | `GET` | `/brain/coverage` | View coverage and confidence metrics |
+| `GET` | `/brain/search?q=refund` | Search graph memory |
 | `GET` | `/brain/graph` | Return entities, edges, and evidence |
 | `GET` | `/brain/graph/explain?q=enterprise%20refund` | Explain a memory query with relationships and evidence |
 | `GET` | `/brain/graph/neighbors/{entity_id}` | Return graph neighbors for an entity |
 | `GET` | `/brain/graph/path?from=a&to=b` | Find a path between two entities |
+| `GET` | `/brain/query/owner?q=refund%20policy` | Find accountable owners and approval owners |
+| `GET` | `/brain/query/dependencies?q=refund%20process` | Find direct and transitive dependencies |
+| `GET` | `/brain/query/affected?q=Zendesk` | Find systems affected by an entity changing or disappearing |
+| `GET` | `/brain/query/trace?q=refund%20policy` | Trace a decision through owners, dependencies, relations, and evidence |
+| `GET` | `/brain/query/timeline?entity_id=policy_refund_policy` | Return temporal history for an entity |
 | `GET` | `/brain/discoveries` | Return structured discoveries extracted from source records |
 | `GET` | `/brain/snapshots?entity_id=policy_refund_policy` | Return temporal memory snapshots |
 | `GET` | `/brain/conflicts` | Detect policy/process conflicts across temporal memory |
 | `GET` | `/brain/confidence/rankings` | Rank graph entities by confidence and evidence support |
+| `GET` | `/brain/memory/health` | Return freshness, staleness, expiry, and decayed confidence |
+| `GET` | `/brain/evolution?entity_id=policy_refund_policy` | Explain organizational memory evolution |
 | `POST` | `/brain/events` | Store operational events for process mining |
 | `GET` | `/brain/processes/flows` | Return discovered event transitions |
 | `POST` | `/brain/plan` | Build an execution plan from graph memory |
@@ -115,6 +126,27 @@ Invoke-RestMethod `
 ```powershell
 Invoke-RestMethod `
   -Uri http://127.0.0.1:8000/brain/conflicts
+```
+
+## Example Dependency Query
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/brain/query/dependencies?q=refund%20process"
+```
+
+## Example Memory Health
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/brain/memory/health?as_of=2026-06-01T00:00:00Z"
+```
+
+## Example Evolution
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/brain/evolution?entity_id=policy_refund_policy"
 ```
 
 ## Example Simulator

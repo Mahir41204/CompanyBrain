@@ -7,7 +7,7 @@ from typing import Any
 from company_brain.core.edges import Edge
 from company_brain.core.entities import Entity, EntityType, entity_id
 from company_brain.core.evidence import Evidence
-from company_brain.discovery import Discovery, DiscoveryEngine
+from company_brain.discovery import Discovery, DiscoveryEngine, RelationDiscovery
 from company_brain.extractors import (
     DecisionExtractor,
     ExtractionResult,
@@ -34,6 +34,7 @@ class MemoryIngestionService:
         self.discoveries = DiscoveryRepository(data_dir)
         self.snapshots = SnapshotRepository(data_dir)
         self.discovery_engine = DiscoveryEngine()
+        self.relation_discovery = RelationDiscovery()
         self.extractors = [
             ProcessExtractor(),
             PolicyExtractor(),
@@ -60,6 +61,7 @@ class MemoryIngestionService:
         discovery_entities, discovery_edges = self._memory_from_discovery(discovery, skill_id)
         extraction.entities.extend(discovery_entities)
         extraction.edges.extend(discovery_edges)
+        extraction.edges.extend(self.relation_discovery.discover(text, extraction.entities, evidence.id))
 
         self.entities.upsert_many(extraction.entities)
         self.edges.upsert_many(extraction.edges)
