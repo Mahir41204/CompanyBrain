@@ -72,8 +72,10 @@ On Windows, `python run_server.py --host 127.0.0.1 --port 8000` is an equivalent
 | `POST` | `/brain/candidates/{candidate_id}/approve` | Promote a candidate into an executable skill |
 | `POST` | `/brain/candidates/{candidate_id}/reject` | Reject a candidate skill |
 | `GET` | `/brain/coverage` | View coverage and confidence metrics |
+| `GET` | `/brain/dashboard` | Return executive KPIs, coverage trends, health, gaps, bottlenecks, and actions |
 | `GET` | `/brain/search?q=refund` | Search graph memory |
 | `GET` | `/brain/graph` | Return entities, edges, and evidence |
+| `GET` | `/brain/graph/view` | Return graph nodes, relation strength, criticality, confidence, filters, and evidence |
 | `GET` | `/brain/graph/explain?q=enterprise%20refund` | Explain a memory query with relationships and evidence |
 | `GET` | `/brain/graph/neighbors/{entity_id}` | Return graph neighbors for an entity |
 | `GET` | `/brain/graph/path?from=a&to=b` | Find a path between two entities |
@@ -92,6 +94,7 @@ On Windows, `python run_server.py --host 127.0.0.1 --port 8000` is an equivalent
 | `GET` | `/brain/processes/flows` | Return discovered event transitions |
 | `POST` | `/brain/plan` | Build an execution plan from graph memory |
 | `POST` | `/brain/simulate` | Simulate removal of a person, team, tool, policy, or process |
+| `POST` | `/brain/simulation/run` | Run scenario-builder simulations with mitigations, comparisons, confidence, timeline, and cost breakdown |
 | `POST` | `/brain/agent-tasks` | Run the agent runtime for a goal |
 
 ## Example Execution

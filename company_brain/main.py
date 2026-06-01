@@ -19,6 +19,7 @@ from .memory.event_store import Event, EventStore
 from .memory.health import MemoryHealth
 from .memory.process_mining import ProcessMiner
 from .models import skill_summary
+from .product import DashboardService, GraphViewService, SimulationService
 from .reasoning import (
     BrainQueryEngine,
     ConfidenceRanker,
@@ -103,6 +104,15 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                 if parts == ["brain", "coverage"]:
                     self._send_json(coverage_service.compute())
                     return
+                if parts == ["brain", "dashboard"]:
+                    self._send_json(
+                        DashboardService(
+                            load_graph(),
+                            snapshot_repository.list_snapshots(),
+                            coverage_service.compute(),
+                        ).build()
+                    )
+                    return
                 if parts == ["brain", "search"]:
                     search_query = self._query_value(query, "q") or self._query_value(query, "query")
                     if not search_query:
@@ -112,6 +122,9 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     return
                 if parts == ["brain", "graph"]:
                     self._send_json(load_graph().to_dict())
+                    return
+                if parts == ["brain", "graph", "view"]:
+                    self._send_json(GraphViewService(load_graph(), snapshot_repository.list_snapshots()).build())
                     return
                 if parts == ["brain", "graph", "entities"]:
                     self._send_json({"entities": [entity.to_dict() for entity in entity_repository.list_entities()]})
@@ -273,6 +286,10 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     if not query:
                         raise ValueError("query is required")
                     self._send_json(OrganizationalSimulator(load_graph()).simulate_removal(query))
+                    return
+
+                if parts == ["brain", "simulation", "run"]:
+                    self._send_json(SimulationService(load_graph()).run(payload))
                     return
 
                 if parts == ["brain", "agent-tasks"]:

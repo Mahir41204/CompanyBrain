@@ -3,131 +3,218 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Company Brain</title>
+    <title>CompanyBrain</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Company Brain</p>
-        <h1>Executable Operations</h1>
-      </div>
-      <div class="status" id="apiStatus">Connecting</div>
-    </header>
-
-    <main class="shell">
-      <nav class="rail" aria-label="Views">
-        <button class="nav-button active" data-view="skillsView">Skills</button>
-        <button class="nav-button" data-view="reviewView">Review</button>
-        <button class="nav-button" data-view="ingestView">Ingest</button>
-        <button class="nav-button" data-view="memoryView">Memory</button>
-        <button class="nav-button" data-view="coverageView">Coverage</button>
-      </nav>
-
-      <section class="view active" id="skillsView">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Skill Registry</p>
-            <h2>Agent-ready rules</h2>
-          </div>
-          <button id="refreshSkills">Refresh</button>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">Company<span>Brain</span></div>
+        <nav class="nav" aria-label="Main">
+          <button class="nav-item active" data-view="overview">Overview</button>
+          <button class="nav-item" data-view="graph">Knowledge Graph</button>
+          <button class="nav-item" data-view="simulate">Simulate</button>
+        </nav>
+        <div class="sidebar-status">
+          <span class="status-dot"></span>
+          <span id="connectionStatus">Connecting</span>
         </div>
-        <div class="two-pane">
-          <div class="list" id="skillList"></div>
-          <div class="detail">
-            <div class="detail-head">
-              <div>
-                <p class="eyebrow" id="selectedDomain">Domain</p>
-                <h3 id="selectedTitle">Select a skill</h3>
-              </div>
-              <span class="pill" id="selectedConfidence">0.00</span>
+      </aside>
+
+      <main class="main">
+        <section class="view active" id="overviewView">
+          <header class="page-head">
+            <div>
+              <h1>Organizational intelligence</h1>
+              <p id="overviewSubtitle">Loading company memory</p>
             </div>
-            <pre id="skillDefinition">{}</pre>
-            <div class="execute-panel">
-              <div class="section-head compact">
-                <h3>Execute</h3>
-                <button id="runSkill">Run</button>
+            <button class="primary" id="refreshOverview">Refresh</button>
+          </header>
+
+          <div class="kpi-grid" id="overviewKpis"></div>
+
+          <div class="layout two">
+            <section class="panel wide">
+              <div class="panel-head">
+                <h2>Coverage Trend</h2>
+                <span id="coverageTrendLabel">90 days</span>
               </div>
-              <textarea id="executionContext" spellcheck="false">{
-  "customer_tier": "enterprise",
-  "days_since_purchase": 75,
-  "previous_refund_requests": 0,
-  "churn_risk": false
-}</textarea>
-              <pre id="executionResult">{}</pre>
+              <div class="trend-chart" id="coverageTrend"></div>
+              <div class="drilldown-grid" id="coverageDrilldown"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Confidence</h2>
+                <span>Graph trust</span>
+              </div>
+              <div class="confidence-ring" id="confidenceRing">
+                <span>0%</span>
+              </div>
+              <div class="mini-list" id="healthSummary"></div>
+            </section>
+          </div>
+
+          <div class="layout three">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Organizational Health</h2>
+                <span>Top risks</span>
+              </div>
+              <div class="stack" id="topRisks"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Top Bottlenecks</h2>
+                <span>Dependency load</span>
+              </div>
+              <div class="stack" id="topBottlenecks"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Action Center</h2>
+                <span>Recommended</span>
+              </div>
+              <div class="stack" id="recommendedActions"></div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Prioritized Knowledge Gaps</h2>
+              <span>Impact, teams, processes, estimated risk</span>
             </div>
-          </div>
-        </div>
-      </section>
+            <div class="gap-table" id="gapTable"></div>
+          </section>
+        </section>
 
-      <section class="view" id="reviewView">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Human Review</p>
-            <h2>Candidate skills</h2>
-          </div>
-          <button id="refreshCandidates">Refresh</button>
-        </div>
-        <div class="list wide" id="candidateList"></div>
-      </section>
+        <section class="view" id="graphView">
+          <header class="page-head">
+            <div>
+              <h1>Knowledge graph</h1>
+              <p id="graphSubtitle">Entities, relationships, evidence, confidence, and criticality</p>
+            </div>
+            <div class="toolbar compact">
+              <button id="refreshGraph">Refresh</button>
+              <button class="primary" id="runPathSearch">Find Path</button>
+            </div>
+          </header>
 
-      <section class="view" id="ingestView">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Knowledge Ingestion</p>
-            <h2>Extract from source text</h2>
-          </div>
-          <button id="submitIngest">Extract</button>
-        </div>
-        <div class="form-grid">
-          <label>
-            Source
-            <input id="ingestSource" value="slack_thread_12847">
-          </label>
-          <label>
-            Owner
-            <input id="ingestOwner" value="operations_reviewer">
-          </label>
-        </div>
-        <textarea id="ingestContent" spellcheck="true">Customer wants a refund after 60 days. Approve it if they are enterprise and this is their first refund request, otherwise escalate to Sarah.</textarea>
-        <pre id="ingestResult">{}</pre>
-      </section>
+          <div class="graph-layout">
+            <section class="graph-stage">
+              <div class="graph-toolbar">
+                <div class="filter-row" id="graphFilters"></div>
+                <div class="time-row" id="timeTravel"></div>
+              </div>
+              <svg id="graphSvg" viewBox="0 0 960 610" role="img" aria-label="CompanyBrain knowledge graph"></svg>
+            </section>
 
-      <section class="view" id="coverageView">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Coverage</p>
-            <h2>Operational map</h2>
+            <aside class="panel graph-side">
+              <div class="panel-head">
+                <h2>Inspector</h2>
+                <span id="selectedNodeType">Node</span>
+              </div>
+              <input id="graphSearch" class="field" placeholder="Search nodes">
+              <div class="path-box">
+                <input id="pathFrom" class="field" placeholder="From">
+                <input id="pathTo" class="field" placeholder="To">
+              </div>
+              <div id="nodeInspector"></div>
+              <div class="panel-head evidence-head">
+                <h2>Evidence</h2>
+                <span id="evidenceCount">0 sources</span>
+              </div>
+              <div class="evidence-list" id="evidenceViewer"></div>
+            </aside>
           </div>
-          <button id="refreshCoverage">Refresh</button>
-        </div>
-        <div class="metrics" id="coverageMetrics"></div>
-        <div class="list wide" id="coverageGaps"></div>
-      </section>
+        </section>
 
-      <section class="view" id="memoryView">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Memory Graph</p>
-            <h2>Entities, relationships, evidence</h2>
+        <section class="view" id="simulateView">
+          <header class="page-head">
+            <div>
+              <h1>What-if simulation</h1>
+              <p>Scenario builder, comparison, mitigation testing, and impact breakdown</p>
+            </div>
+            <button class="primary" id="runSimulation">Run Simulation</button>
+          </header>
+
+          <div class="sim-layout">
+            <aside class="panel sim-builder">
+              <div class="panel-head">
+                <h2>Scenario Builder</h2>
+                <span id="scenarioStatus">Ready</span>
+              </div>
+              <label class="label">Scenario type</label>
+              <select id="scenarioType" class="field"></select>
+              <label class="label">Target</label>
+              <input id="scenarioTarget" class="field" value="Zendesk">
+              <label class="label">Mitigations</label>
+              <div class="check-list" id="mitigationList">
+                <label><input type="checkbox" value="assign backup owner"> Assign backup owner</label>
+                <label><input type="checkbox" value="document process"> Document process</label>
+                <label><input type="checkbox" value="replace with alternate tool"> Add alternate tool</label>
+              </div>
+              <button id="compareMitigation">Compare With Mitigation</button>
+              <div class="scenario-library" id="scenarioLibrary"></div>
+            </aside>
+
+            <section class="sim-results">
+              <div class="layout two">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2>Resilience Score</h2>
+                    <span>Before and after</span>
+                  </div>
+                  <div id="resiliencePanel"></div>
+                </section>
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2>Confidence Breakdown</h2>
+                    <span>Evidence and dependency strength</span>
+                  </div>
+                  <div id="simulationConfidence"></div>
+                </section>
+              </div>
+
+              <div class="layout two">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2>Impact Cost Breakdown</h2>
+                    <span>Monthly estimate</span>
+                  </div>
+                  <div id="costBreakdown"></div>
+                </section>
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2>Scenario Comparison</h2>
+                    <span>A vs B</span>
+                  </div>
+                  <div id="scenarioComparison"></div>
+                </section>
+              </div>
+
+              <section class="panel">
+                <div class="panel-head">
+                  <h2>Simulation Timeline</h2>
+                  <span>0 hours to 1 month</span>
+                </div>
+                <div class="timeline" id="simulationTimeline"></div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-head">
+                  <h2>Prioritized Recommendations</h2>
+                  <span>Critical, high, medium, low</span>
+                </div>
+                <div class="recommendation-grid" id="simulationRecommendations"></div>
+              </section>
+            </section>
           </div>
-          <button id="refreshMemory">Refresh</button>
-        </div>
-        <div class="form-grid">
-          <label>
-            Query
-            <input id="memoryQuery" value="enterprise refund">
-          </label>
-          <label>
-            Explain
-            <button id="explainMemory">Run Explain</button>
-          </label>
-        </div>
-        <div class="metrics" id="memoryMetrics"></div>
-        <pre id="memoryResult">{}</pre>
-      </section>
-    </main>
-
+        </section>
+      </main>
+    </div>
     <script src="/static/app.js"></script>
   </body>
 </html>
