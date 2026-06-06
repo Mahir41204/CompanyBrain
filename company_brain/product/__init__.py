@@ -5,6 +5,7 @@ from .coverage_view import CoverageViewService
 from .evidence_explorer import EvidenceExplorerService
 from .graph_view import GraphViewService
 from .people_explorer import PeopleExplorerService
+from .people_risk import PeopleRiskService
 from .process_explorer import ProcessExplorerService
 from .risk_center import RiskCenterService
 from .simulation import SimulationService
@@ -16,6 +17,7 @@ __all__ = [
     "EvidenceExplorerService",
     "GraphViewService",
     "PeopleExplorerService",
+    "PeopleRiskService",
     "ProcessExplorerService",
     "RiskCenterService",
     "SimulationService",

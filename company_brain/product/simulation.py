@@ -45,7 +45,7 @@ class SimulationService:
 
     def library(self) -> list[dict[str, str]]:
         return [
-            {"type": "person_departure", "label": "Person leaves", "default_target": "Sarah"},
+            {"type": "person_departure", "label": "Person leaves", "default_target": "Sarah Kim"},
             {"type": "tool_outage", "label": "Tool outage", "default_target": "Zendesk"},
             {"type": "policy_change", "label": "Policy change", "default_target": "refund policy"},
             {"type": "team_merge", "label": "Team merge", "default_target": "Finance Team"},

@@ -184,5 +184,74 @@
     "sources": [
       "evidence_seed_refund_policy"
     ]
+  },
+  {
+    "id": "person_sarah_kim",
+    "type": "person",
+    "name": "Sarah Kim",
+    "attributes": {
+      "role": "Head of Support",
+      "risk_reason": "sole escalation owner for enterprise refund exceptions",
+      "departure_notice": "hypothetical 30-day transition"
+    },
+    "confidence": 0.91,
+    "sources": [
+      "evidence_seed_support_handoff",
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "person_maya_rao",
+    "type": "person",
+    "name": "Maya Rao",
+    "attributes": {
+      "role": "Support Ops Lead",
+      "backup_for": "Sarah Kim",
+      "approval_authority": "candidate, not transferred"
+    },
+    "confidence": 0.78,
+    "sources": [
+      "evidence_seed_support_handoff"
+    ]
+  },
+  {
+    "id": "team_support_team",
+    "type": "team",
+    "name": "Support Team",
+    "attributes": {
+      "segment": "enterprise support"
+    },
+    "confidence": 0.86,
+    "sources": [
+      "evidence_seed_support_handoff",
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "process_support_escalation_workflow",
+    "type": "process",
+    "name": "support escalation workflow",
+    "attributes": {
+      "sla_breach_days": 3,
+      "customer_segment": "enterprise"
+    },
+    "confidence": 0.87,
+    "sources": [
+      "evidence_seed_support_handoff",
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "policy_customer_sla_policy",
+    "type": "policy",
+    "name": "customer SLA policy",
+    "attributes": {
+      "enterprise_response_hours": 24,
+      "breach_escalation_days": 3
+    },
+    "confidence": 0.83,
+    "sources": [
+      "evidence_seed_qbr_people_risk"
+    ]
   }
 ]

@@ -22,5 +22,21 @@
     "text": "Enterprise pricing exceptions above twenty percent discount require VP Sales approval and should be logged in Salesforce.",
     "timestamp": "2026-05-21",
     "confidence": 0.86
+  },
+  {
+    "id": "evidence_seed_support_handoff",
+    "source_type": "slack",
+    "source_ref": "support/escalations-sarah",
+    "text": "Sarah Kim is the escalation owner for enterprise refund exceptions. Support escalates SLA breaches over three days to Sarah before finance review. Maya Rao is named as backup but does not approve payouts yet.",
+    "timestamp": "2026-05-27",
+    "confidence": 0.91
+  },
+  {
+    "id": "evidence_seed_qbr_people_risk",
+    "source_type": "meeting",
+    "source_ref": "qbr/support-risk-review",
+    "text": "Refund workflow, Zendesk macros, and finance approval handoffs are concentrated with Sarah Kim. If Sarah is unavailable, Support expects enterprise SLA breaches and retention-risk refunds to queue for 48 hours.",
+    "timestamp": "2026-05-29",
+    "confidence": 0.88
   }
 ]

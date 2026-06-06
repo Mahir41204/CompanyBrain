@@ -1,5 +1,6 @@
 const state = {
   dashboard: null,
+  peopleRisk: null,
   graph: null,
   people: null,
   processes: null,
@@ -86,6 +87,16 @@ function chips(rows, label = "name") {
   ` : `<div class="row-meta">None mapped</div>`;
 }
 
+function entityChips(rows) {
+  const list = rows || [];
+  return list.length ? list.map((row) => `<span class="pill">${escapeHtml(row.name || row.id || row)}</span>`).join("") : `<span class="row-meta">None mapped</span>`;
+}
+
+function riskText(value) {
+  const text = String(value || "unknown");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function renderRows(id, rows, renderer) {
   const list = rows || [];
   $(id).innerHTML = list.length ? list.map((row) => `<div class="row">${renderer(row)}</div>`).join("") : `<div class="row-meta">No items</div>`;
@@ -96,21 +107,83 @@ async function loadOverview() {
   renderOverview();
 }
 
+async function loadPeopleRisk(target = null) {
+  const selectedTarget = target || $("peopleRiskTarget")?.value || "";
+  const suffix = selectedTarget ? `?target=${encodeURIComponent(selectedTarget)}` : "";
+  state.peopleRisk = await api(`/brain/people-risk${suffix}`);
+  renderPeopleRisk();
+}
+
+function renderPeopleRisk() {
+  const data = state.peopleRisk;
+  if (!data) return;
+  const selected = data.selected_person;
+  const simulation = data.departure_simulation;
+  const targetName = selected?.name || data.positioning.buyer_question.replace("What breaks if ", "").replace(" leaves?", "");
+  const options = data.top_people.map((row) => `<option value="${escapeHtml(row.name)}">${escapeHtml(row.name)} - ${escapeHtml(row.role)}</option>`).join("");
+  if ($("peopleRiskTarget").innerHTML !== options) {
+    $("peopleRiskTarget").innerHTML = options;
+  }
+  if (targetName) $("peopleRiskTarget").value = targetName;
+
+  $("peopleRiskQuestion").textContent = data.positioning.buyer_question;
+  $("peopleRiskNarrative").textContent = selected
+    ? `${selected.role} controls ${selected.controlled_processes.length} critical workflows with ${selected.evidence_count} source-backed proof points. ${selected.backup_status}.`
+    : data.positioning.why_now;
+
+  const mitigated = simulation.mitigated_resilience?.after ?? simulation.resilience.after;
+  $("departureSnapshot").innerHTML = `
+    <div class="snapshot-item danger">
+      <span>Departure risk</span>
+      <strong>${riskText(simulation.risk)}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>Monthly exposure</span>
+      <strong>${money(simulation.monthly_cost.monthly_estimate)}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>Affected processes</span>
+      <strong>${simulation.affected.processes.length}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>Resilience lift</span>
+      <strong>+${Math.max(0, mitigated - simulation.resilience.after)}</strong>
+    </div>
+  `;
+
+  renderRows("peopleRiskControlPlan", data.control_plan, (row) => `
+    <div class="row-title"><span>${escapeHtml(row.action)}</span><span class="pill ${severityClass(row.priority)}">${escapeHtml(row.priority)}</span></div>
+    <div class="row-meta">${escapeHtml(row.target)} - ${escapeHtml(row.reason)}</div>
+  `);
+
+  $("peopleRiskEvidenceLabel").textContent = `${data.proof_points.length} sources`;
+  $("peopleRiskProof").innerHTML = data.proof_points.length ? data.proof_points.map((item) => `
+    <article class="evidence-card">
+      <strong>${escapeHtml(item.source_type)} - ${escapeHtml(item.source_ref)}</strong>
+      <div class="row-meta">confidence ${percentNumber(item.confidence)}%</div>
+      <div>${escapeHtml(item.text)}</div>
+    </article>
+  `).join("") : `<div class="row-meta">No evidence attached</div>`;
+  if (state.dashboard) renderOverview();
+}
+
 function renderOverview() {
   const data = state.dashboard;
   const kpis = data.kpis;
-  $("overviewSubtitle").textContent = `Live graph: ${kpis.nodes} nodes, ${kpis.relations} relations`;
+  const peopleRisk = state.peopleRisk;
+  const departure = peopleRisk?.departure_simulation;
+  $("overviewSubtitle").textContent = `Live graph: ${kpis.nodes} nodes, ${kpis.relations} relations, ${peopleRisk?.summary.high_risk_people || 0} high-risk people`;
   renderKpis("overviewKpis", [
     {
-      label: "Knowledge Risk Score",
-      value: `${kpis.knowledge_risk_score.value}/100`,
-      detail: kpis.knowledge_risk_score.trend_note,
-      cls: kpis.knowledge_risk_score.value >= 75 ? "bad" : "warn"
+      label: "Departure Risk",
+      value: departure ? riskText(departure.risk) : `${kpis.knowledge_risk_score.value}/100`,
+      detail: peopleRisk?.positioning.buyer_question || kpis.knowledge_risk_score.trend_note,
+      cls: departure?.risk === "critical" || departure?.risk === "high" ? "bad" : "warn"
     },
-    { label: "Nodes", value: kpis.nodes, detail: "Mapped memory" },
-    { label: "Relations", value: kpis.relations, detail: "Typed dependencies" },
-    { label: "Coverage", value: pct(kpis.coverage), detail: "Skill coverage estimate", cls: "warn" },
-    { label: "Confidence", value: pct(kpis.average_confidence), detail: "Average graph confidence" }
+    { label: "Monthly Exposure", value: departure ? money(departure.monthly_cost.monthly_estimate) : "Pending", detail: "Scenario estimate", cls: "warn" },
+    { label: "Affected Workflows", value: departure ? departure.affected.processes.length : 0, detail: "Graph-derived blast radius" },
+    { label: "High-Risk People", value: peopleRisk?.summary.high_risk_people || 0, detail: `${peopleRisk?.summary.people_mapped || 0} people mapped` },
+    { label: "Evidence Confidence", value: departure ? pct(departure.confidence.overall) : pct(kpis.average_confidence), detail: "Dependency confidence" }
   ]);
 
   renderTrend(data.coverage_trend);
@@ -340,6 +413,7 @@ async function loadPeople() {
 
 function renderPeople() {
   const data = state.people;
+  const riskRows = Object.fromEntries((state.peopleRisk?.top_people || []).map((row) => [row.id, row]));
   renderKpis("peopleKpis", [
     { label: "People", value: data.summary.people, detail: "Mapped individuals" },
     { label: "Teams", value: data.summary.teams, detail: "Mapped teams" },
@@ -349,7 +423,7 @@ function renderPeople() {
   $("peopleList").innerHTML = data.people_and_teams.map((row) => `
     <article class="data-card">
       <div class="row-title"><h3>${escapeHtml(row.name)}</h3><span class="pill ${severityClass(row.risk_label)}">${row.tribal_knowledge_score}/100</span></div>
-      <div class="row-meta">${row.type} - confidence ${percentNumber(row.confidence)}% - ${row.evidence.length} evidence items</div>
+      <div class="row-meta">${row.type} - confidence ${percentNumber(row.confidence)}% - ${row.evidence.length} evidence items${riskRows[row.id] ? ` - ${escapeHtml(riskRows[row.id].backup_status)}` : ""}</div>
       <div class="row-meta">Owns</div>${chips(row.owns)}
       <div class="row-meta">Approvals</div>${chips(row.approvals)}
       <div class="row-meta">Escalations</div>${chips(row.escalations)}
@@ -476,8 +550,8 @@ function renderSources() {
 
 async function loadSimulation(payload = null) {
   const body = payload || {
-    type: $("scenarioType").value || "tool_outage",
-    target: $("scenarioTarget").value || "Zendesk",
+    type: $("scenarioType").value || "person_departure",
+    target: $("scenarioTarget").value || "Sarah Kim",
     mitigations: selectedMitigations()
   };
   state.simulation = await api("/brain/simulation/run", {
@@ -510,6 +584,8 @@ function renderSimulation() {
     <div class="row"><div class="row-title"><span>Dependency strength</span><span>${result.confidence.dependency_strength}%</span></div></div>
     <div class="row-meta">${escapeHtml(result.confidence.why)}</div>
   `;
+  renderBlastRadius(raw);
+  renderFailurePaths(raw);
   $("costBreakdown").innerHTML = `
     <div class="kpi-value">${money(result.impact_cost_breakdown.monthly_estimate)}/mo</div>
     <div class="row-meta">${escapeHtml(result.impact_cost_breakdown.explanation)}</div>
@@ -539,6 +615,35 @@ function renderSimulation() {
     </div>
   `).join("");
   renderComparison(sim);
+}
+
+function renderBlastRadius(raw) {
+  $("blastRadius").innerHTML = `
+    <div class="blast-grid">
+      <div><span>Processes</span><strong>${raw.affected_processes?.length || 0}</strong></div>
+      <div><span>Teams</span><strong>${raw.affected_teams?.length || 0}</strong></div>
+      <div><span>Policies</span><strong>${raw.affected_policies?.length || 0}</strong></div>
+      <div><span>Tools</span><strong>${raw.affected_tools?.length || 0}</strong></div>
+    </div>
+    <div class="row-meta">Direct neighbors: ${raw.blast_radius?.direct_neighbors || 0} - transitive affected: ${raw.blast_radius?.transitive_affected || 0}</div>
+    <div class="chip-row">${entityChips(raw.affected_processes)}</div>
+    <div class="chip-row">${entityChips(raw.affected_teams)}</div>
+    <div class="chip-row">${entityChips(raw.affected_policies)}</div>
+  `;
+}
+
+function renderFailurePaths(raw) {
+  const paths = raw.propagation?.paths || [];
+  $("failurePaths").innerHTML = paths.length ? paths.slice(0, 5).map((path) => {
+    const chain = path.steps.map((step) => `${escapeHtml(step.relation)} -> ${escapeHtml(step.entity.name)}`).join(" / ");
+    const confidence = Math.round(Math.min(...path.steps.map((step) => Number(step.confidence || 0.5))) * 100);
+    return `
+      <div class="row">
+        <div class="row-title"><span>Depth ${path.depth}</span><span class="pill ${severityClass(confidence < 75 ? "medium" : "low")}">${confidence}%</span></div>
+        <div class="row-meta">${chain}</div>
+      </div>
+    `;
+  }).join("") : `<div class="row-meta">No propagation path found for this target.</div>`;
 }
 
 function scoreBar(label, value) {
@@ -634,6 +739,7 @@ async function ingestManual() {
 
 async function refreshCustomerScreens() {
   await Promise.all([
+    loadPeopleRisk(),
     loadOverview(),
     loadGraph(),
     loadPeople(),
@@ -656,6 +762,7 @@ async function safeLoad(loader) {
 async function boot() {
   setOnline(false, "Loading");
   await Promise.all([
+    safeLoad(loadPeopleRisk),
     safeLoad(loadOverview),
     safeLoad(loadGraph),
     safeLoad(loadPeople),
@@ -664,7 +771,7 @@ async function boot() {
     safeLoad(loadRisks),
     safeLoad(loadEvidence),
     safeLoad(loadSources),
-    safeLoad(() => loadSimulation({ type: "tool_outage", target: "Zendesk", mitigations: [] }))
+    safeLoad(() => loadSimulation({ type: "person_departure", target: "Sarah Kim", mitigations: [] }))
   ]);
   setOnline(true, "Live");
 }
@@ -672,7 +779,24 @@ async function boot() {
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
-$("refreshOverview").addEventListener("click", loadOverview);
+$("refreshOverview").addEventListener("click", async () => {
+  await loadPeopleRisk();
+  await loadOverview();
+});
+$("runPeopleRisk").addEventListener("click", async () => {
+  await loadPeopleRisk($("peopleRiskTarget").value);
+  $("scenarioType").value = "person_departure";
+  $("scenarioTarget").value = $("peopleRiskTarget").value;
+  await loadSimulation({ type: "person_departure", target: $("peopleRiskTarget").value, mitigations: [] });
+});
+$("openRiskGraph").addEventListener("click", () => {
+  const target = $("peopleRiskTarget").value;
+  switchView("graph");
+  if ($("graphSearch")) {
+    $("graphSearch").value = target;
+    if (state.graph) renderGraphSvg();
+  }
+});
 $("refreshGraph").addEventListener("click", loadGraph);
 $("refreshPeople").addEventListener("click", loadPeople);
 $("refreshProcesses").addEventListener("click", loadProcesses);

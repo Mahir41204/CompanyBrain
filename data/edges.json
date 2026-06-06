@@ -158,5 +158,127 @@
     "evidence": [
       "evidence_seed_refund_policy"
     ]
+  },
+  {
+    "id": "person_sarah_kim::owns::process_refund_process",
+    "source_id": "person_sarah_kim",
+    "target_id": "process_refund_process",
+    "relation": "owns",
+    "confidence": 0.9,
+    "evidence": [
+      "evidence_seed_support_handoff",
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "person_sarah_kim::owns::process_support_escalation_workflow",
+    "source_id": "person_sarah_kim",
+    "target_id": "process_support_escalation_workflow",
+    "relation": "owns",
+    "confidence": 0.89,
+    "evidence": [
+      "evidence_seed_support_handoff",
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "person_sarah_kim::owns::tool_zendesk",
+    "source_id": "person_sarah_kim",
+    "target_id": "tool_zendesk",
+    "relation": "owns",
+    "confidence": 0.78,
+    "evidence": [
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "process_refund_process::escalates_to::person_sarah_kim",
+    "source_id": "process_refund_process",
+    "target_id": "person_sarah_kim",
+    "relation": "escalates_to",
+    "confidence": 0.89,
+    "evidence": [
+      "evidence_seed_support_handoff"
+    ]
+  },
+  {
+    "id": "process_support_escalation_workflow::escalates_to::person_sarah_kim",
+    "source_id": "process_support_escalation_workflow",
+    "target_id": "person_sarah_kim",
+    "relation": "escalates_to",
+    "confidence": 0.91,
+    "evidence": [
+      "evidence_seed_support_handoff"
+    ]
+  },
+  {
+    "id": "process_support_escalation_workflow::uses::tool_zendesk",
+    "source_id": "process_support_escalation_workflow",
+    "target_id": "tool_zendesk",
+    "relation": "uses",
+    "confidence": 0.88,
+    "evidence": [
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "process_support_escalation_workflow::governed_by::policy_customer_sla_policy",
+    "source_id": "process_support_escalation_workflow",
+    "target_id": "policy_customer_sla_policy",
+    "relation": "governed_by",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "process_support_escalation_workflow::requires_approval::team_finance_team",
+    "source_id": "process_support_escalation_workflow",
+    "target_id": "team_finance_team",
+    "relation": "requires_approval",
+    "confidence": 0.82,
+    "evidence": [
+      "evidence_seed_support_handoff"
+    ]
+  },
+  {
+    "id": "process_support_escalation_workflow::depends_on::process_refund_process",
+    "source_id": "process_support_escalation_workflow",
+    "target_id": "process_refund_process",
+    "relation": "depends_on",
+    "confidence": 0.83,
+    "evidence": [
+      "evidence_seed_qbr_people_risk"
+    ]
+  },
+  {
+    "id": "team_support_team::owns::process_support_escalation_workflow",
+    "source_id": "team_support_team",
+    "target_id": "process_support_escalation_workflow",
+    "relation": "owns",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_support_handoff"
+    ]
+  },
+  {
+    "id": "person_maya_rao::backs_up::person_sarah_kim",
+    "source_id": "person_maya_rao",
+    "target_id": "person_sarah_kim",
+    "relation": "backs_up",
+    "confidence": 0.72,
+    "evidence": [
+      "evidence_seed_support_handoff"
+    ]
+  },
+  {
+    "id": "team_support_team::uses::tool_zendesk",
+    "source_id": "team_support_team",
+    "target_id": "tool_zendesk",
+    "relation": "uses",
+    "confidence": 0.84,
+    "evidence": [
+      "evidence_seed_qbr_people_risk"
+    ]
   }
 ]

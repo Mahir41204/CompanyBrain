@@ -81,5 +81,36 @@
     ],
     "confidence": 0.86,
     "created_at": "2026-05-21T00:00:00Z"
+  },
+  {
+    "id": "discovery_seed_support_escalation",
+    "process": "support escalation",
+    "steps": [
+      "detect_sla_breach",
+      "check_enterprise_status",
+      "route_to_sarah",
+      "finance_review",
+      "customer_update"
+    ],
+    "owner": "Sarah Kim",
+    "exceptions": [
+      "enterprise SLA breach",
+      "retention-risk refund"
+    ],
+    "tool": "Zendesk",
+    "policies": {
+      "name": "customer SLA policy",
+      "breach_escalation_days": 3
+    },
+    "source_refs": [
+      "support/escalations-sarah",
+      "qbr/support-risk-review"
+    ],
+    "evidence_ids": [
+      "evidence_seed_support_handoff",
+      "evidence_seed_qbr_people_risk"
+    ],
+    "confidence": 0.88,
+    "created_at": "2026-05-29T00:00:00Z"
   }
 ]

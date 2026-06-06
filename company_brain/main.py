@@ -26,6 +26,7 @@ from .product import (
     EvidenceExplorerService,
     GraphViewService,
     PeopleExplorerService,
+    PeopleRiskService,
     ProcessExplorerService,
     RiskCenterService,
     SimulationService,
@@ -201,6 +202,10 @@ def make_handler(data_dir: str | Path) -> type[BaseHTTPRequestHandler]:
                     return
                 if parts == ["brain", "people"]:
                     self._send_json(PeopleExplorerService(load_graph()).build())
+                    return
+                if parts == ["brain", "people-risk"]:
+                    target = self._query_value(query, "target") or self._query_value(query, "q")
+                    self._send_json(PeopleRiskService(load_graph()).build(target))
                     return
                 if parts == ["brain", "evidence"]:
                     search_query = self._query_value(query, "q") or self._query_value(query, "query")

@@ -3,21 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CompanyBrain</title>
+    <title>CompanyBrain | People Risk Intelligence</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <div class="brand">Company<span>Brain</span></div>
+        <div class="brand">Company<span>Brain</span><small>People Risk Intelligence</small></div>
         <nav class="nav" aria-label="Main">
-          <button class="nav-item active" data-view="overview">Overview</button>
-          <button class="nav-item" data-view="graph">Knowledge Graph</button>
-          <button class="nav-item" data-view="people">People & Teams</button>
-          <button class="nav-item" data-view="processes">Processes</button>
+          <button class="nav-item active" data-view="overview">Risk Cockpit</button>
+          <button class="nav-item" data-view="graph">Graph Explorer</button>
+          <button class="nav-item" data-view="people">People Risk</button>
+          <button class="nav-item" data-view="processes">Process Explorer</button>
           <button class="nav-item" data-view="coverage">Coverage</button>
-          <button class="nav-item" data-view="risks">Gaps & Risks</button>
-          <button class="nav-item" data-view="simulate">Simulation</button>
+          <button class="nav-item" data-view="risks">Conflict Center</button>
+          <button class="nav-item" data-view="simulate">Simulation Center</button>
           <button class="nav-item" data-view="evidence">Evidence</button>
           <button class="nav-item" data-view="sources">Sources</button>
           <button class="nav-item" data-view="settings">Settings</button>
@@ -32,11 +32,42 @@
         <section class="view active" id="overviewView">
           <header class="page-head">
             <div>
-              <h1>Organizational intelligence</h1>
-              <p id="overviewSubtitle">Loading company memory</p>
+              <h1>People risk cockpit</h1>
+              <p id="overviewSubtitle">Loading departure-risk intelligence</p>
             </div>
             <button class="primary" id="refreshOverview">Refresh</button>
           </header>
+
+          <section class="risk-command">
+            <div class="risk-copy">
+              <div class="eyebrow">Board question</div>
+              <h2 id="peopleRiskQuestion">What breaks if Sarah Kim leaves?</h2>
+              <p id="peopleRiskNarrative">Building source-backed departure simulation.</p>
+              <div class="risk-actions">
+                <select id="peopleRiskTarget" class="field"></select>
+                <button class="primary" id="runPeopleRisk">Run Departure Simulation</button>
+                <button id="openRiskGraph">Open Graph</button>
+              </div>
+            </div>
+            <div class="risk-snapshot" id="departureSnapshot"></div>
+          </section>
+
+          <div class="layout two">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Control Plan</h2>
+                <span>Mitigation-ready</span>
+              </div>
+              <div class="stack" id="peopleRiskControlPlan"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Evidence Trail</h2>
+                <span id="peopleRiskEvidenceLabel">0 sources</span>
+              </div>
+              <div class="evidence-list" id="peopleRiskProof"></div>
+            </section>
+          </div>
 
           <div class="kpi-grid" id="overviewKpis"></div>
 
@@ -231,7 +262,7 @@
               <label class="label">Scenario type</label>
               <select id="scenarioType" class="field"></select>
               <label class="label">Target</label>
-              <input id="scenarioTarget" class="field" value="Zendesk">
+              <input id="scenarioTarget" class="field" value="Sarah Kim">
               <label class="label">Mitigations</label>
               <div class="check-list" id="mitigationList">
                 <label><input type="checkbox" value="assign backup owner"> Assign backup owner</label>
@@ -257,6 +288,23 @@
                     <span>Evidence and dependency strength</span>
                   </div>
                   <div id="simulationConfidence"></div>
+                </section>
+              </div>
+
+              <div class="layout two">
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2>Blast Radius</h2>
+                    <span>Affected graph surface</span>
+                  </div>
+                  <div id="blastRadius"></div>
+                </section>
+                <section class="panel">
+                  <div class="panel-head">
+                    <h2>Failure Paths</h2>
+                    <span>Graph-derived</span>
+                  </div>
+                  <div class="stack" id="failurePaths"></div>
                 </section>
               </div>
 
